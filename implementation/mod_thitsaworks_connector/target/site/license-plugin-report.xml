@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<licensePluginReport goal="FORMAT" timestamp="1783078576515">
+<licensePluginReport goal="FORMAT" timestamp="1783101934760">
     <module artifactId="mod_thitsaworks_connector" groupId="com.thitsaworks.mojaloop.coreconnector" version="1.0.0"/>
     <files>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/PivotalConfiguration.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/ThitsaWalletConnectorApplication.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/FeeEngineErrorDecoder.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/FeeEngineErrorProcessor.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/FeeEngineErrorResponse.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/ThitsaWalletErrorDecoder.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/ThitsaWalletErrorProcessor.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/ThitsaWalletErrorResponse.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/api/LookUpApi.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/api/QuoteApi.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/api/TransferApi.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/feeengine/CatalystFeeApi.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/services/FeeEngineService.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/services/ThitsaWalletService.java" result="NOOP"/>
-        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/services/impl/ThitsaWalletClientImpl.java" result="NOOP"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/PivotalConfiguration.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/ThitsaWalletConnectorApplication.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/FeeEngineErrorDecoder.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/FeeEngineErrorProcessor.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/FeeEngineErrorResponse.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/ThitsaWalletErrorDecoder.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/ThitsaWalletErrorProcessor.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/error/ThitsaWalletErrorResponse.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/api/LookUpApi.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/api/QuoteApi.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/api/TransferApi.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/feeengine/CatalystFeeApi.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/services/FeeEngineService.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/services/ThitsaWalletService.java" result="REPLACED"/>
+        <file path="src/main/java/com/thitsaworks/mojaloop/coreconnector/services/impl/ThitsaWalletClientImpl.java" result="REPLACED"/>
     </files>
 </licensePluginReport>
