@@ -7,6 +7,7 @@ WORKDIR /opt/app
 ARG GITHUB_ACTOR
 
 COPY pom.xml /opt/app/pom.xml
+COPY license-header /opt/app/license-header
 COPY implementation /opt/app/implementation/
 
 RUN --mount=type=secret,id=github_token \
