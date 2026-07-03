@@ -1,0 +1,15 @@
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/services/FeeEngineService.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/error/ThitsaWalletErrorProcessor.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/error/FeeEngineErrorProcessor.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/services/impl/ThitsaWalletClientImpl.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/ThitsaWalletConnectorApplication.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/error/ThitsaWalletErrorResponse.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/api/LookUpApi.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/PivotalConfiguration.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/error/ThitsaWalletErrorDecoder.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/api/QuoteApi.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/error/FeeEngineErrorDecoder.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/services/ThitsaWalletService.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/api/TransferApi.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/payload/feeengine/CatalystFeeApi.java
+/Users/sandi/Documents/Projects/pivotal-thitsawallet-connector/implementation/mod_thitsaworks_connector/src/main/java/com/thitsaworks/mojaloop/coreconnector/error/FeeEngineErrorResponse.java
