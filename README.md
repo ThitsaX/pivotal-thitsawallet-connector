@@ -76,7 +76,7 @@ java \
   -DfspiopQuotesUrl=http://example.com:3002 \
   -DfspiopTransfersUrl=http://example.com:3000 \
   -DbackendEndpoint=http://example.com:8081 \
-  -DfeeEngineEndpoint=http://example.com:8082 \
+  -DfeeEngineEndpoint=http://example.com:8082\
   -DredisUrl=redis://example.com:6379 \
   -DsdkConnectorPortNo=8080 \
   -cp "implementation/mod_thitsaworks_connector/target/app.jar:implementation/mod_thitsaworks_connector/target/lib/*" \
