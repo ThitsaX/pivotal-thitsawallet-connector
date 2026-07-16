@@ -1,0 +1,78 @@
+# name: Publish image
+# on:
+#   release:
+#     types: [published]
+#   push:
+#     branches:
+#       - main
+
+# permissions:
+#   contents: read
+#   packages: write
+
+# jobs:
+#   main:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       - name: Docker meta
+#         id: docker_meta
+#         uses: docker/metadata-action@v5
+#         with:
+#           images: ghcr.io/${{ github.repository }}
+#           flavor: |
+#             latest=${{ github.event_name == 'release' }}
+#           tags: |
+#             type=match,pattern=v\d+\.\d+\.\d+,enable=${{ github.event_name == 'release' }}
+#             type=match,pattern=v(\d+\.\d+\.\d+),enable=${{ github.event_name == 'release' }},group=1
+#             type=match,pattern=v(\d+\.\d+)\.\d+,enable=${{ github.event_name == 'release' }},group=1
+#             type=sha,event=push,value={{sha}},format=long,enable=${{ github.event_name != 'release' }}
+#           labels: |
+#             org.opencontainers.image.source=https://github.com/${{ github.repository }}/tree/${{ github.sha }}
+
+#       - name: Set up QEMU
+#         uses: docker/setup-qemu-action@v3
+
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v3
+
+#       - name: Login to GitHub Container Registry
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.repository_owner }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+
+#       - name: Test GitHub Packages token
+#         run: |
+#           if [ -z "${GH_PACKAGES_TOKEN}" ]; then
+#             echo "::error::GH_PACKAGES_TOKEN repository secret is missing or empty"
+#             exit 1
+#           fi
+#           curl -i -L -f -u "${GITHUB_ACTOR}:${GH_PACKAGES_TOKEN}" \
+#             "https://maven.pkg.github.com/thitsax/pivotal-java-connector/com/thitsaworks/mojaloop/coreconnector/mod-pivotal-connector-api/0.0.8/mod-pivotal-connector-api-0.0.8.pom" \
+#             -o /tmp/common.pom
+#           echo "GitHub Packages token works in Actions"
+#         env:
+#           GITHUB_ACTOR: pyaesoneaung-thitsaworks
+#           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+#       - name: Build and push
+#         id: docker_build
+#         uses: docker/build-push-action@v6
+#         env:
+#           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+#         with:
+#           context: .
+#           push: ${{ github.event_name != 'pull_request' }}
+#           tags: ${{ steps.docker_meta.outputs.tags }}
+#           labels: ${{ steps.docker_meta.outputs.labels }}
+#           build-args: |
+#             GITHUB_ACTOR=pyaesoneaung-thitsaworks
+#           secret-envs: |
+#             github_token=GH_PACKAGES_TOKEN
+
+#       - name: Image digest
+#         run: echo ${{ steps.docker_build.outputs.digest }}
