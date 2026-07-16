@@ -1,0 +1,45 @@
+name: Trivy Security Scan
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  repository-scan:
+    name: Repository Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan dependencies, secrets and configuration
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-repository.sarif
+          exit-code: 0
+
+      - name: Upload results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-repository.sarif
+
+      - name: Upload audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-repository-report
+          path: trivy-repository.sarif
+          retention-days: 90
