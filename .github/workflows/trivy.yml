@@ -1,45 +1,107 @@
-# name: Trivy Security Scan
+name: Trivy Container Image Scan
 
-# on:
-#   pull_request:
-#   push:
-#     branches:
-#       - main
-#   workflow_dispatch:
+on:
+  workflow_run:
+    workflows:
+      - Publish image
+    types:
+      - completed
+    branches:
+      - main
 
-# permissions:
-#   contents: read
-#   security-events: write
+  workflow_dispatch:
 
-# jobs:
-#   repository-scan:
-#     name: Repository Scan
-#     runs-on: ubuntu-latest
+permissions:
+  contents: read
+  packages: read
+  security-events: write
 
-#     steps:
-#       - name: Checkout repository
-#         uses: actions/checkout@v4
+jobs:
+  image-scan:
+    name: Scan Published Container Image
 
-#       - name: Scan dependencies, secrets and configuration
-#         uses: aquasecurity/trivy-action@0.35.0
-#         with:
-#           scan-type: fs
-#           scan-ref: .
-#           scanners: vuln,secret,misconfig
-#           severity: CRITICAL,HIGH,MEDIUM
-#           ignore-unfixed: true
-#           format: sarif
-#           output: trivy-repository.sarif
-#           exit-code: 0
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
 
-#       - name: Upload results to GitHub Security
-#         uses: github/codeql-action/upload-sarif@v3
-#         with:
-#           sarif_file: trivy-repository.sarif
+    runs-on: ubuntu-latest
 
-#       - name: Upload audit evidence
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: trivy-repository-report
-#           path: trivy-repository.sarif
-#           retention-days: 90
+    steps:
+      - name: Determine image reference
+        id: image
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          repository_lowercase="$(echo "${REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+
+          if [ "${EVENT_NAME}" = "workflow_run" ]; then
+            image_sha="${WORKFLOW_SHA}"
+          else
+            image_sha="${CURRENT_SHA}"
+          fi
+
+          echo "name=ghcr.io/${repository_lowercase}" >> "${GITHUB_OUTPUT}"
+          echo "tag=sha-${image_sha}" >> "${GITHUB_OUTPUT}"
+          echo "ref=ghcr.io/${repository_lowercase}:sha-${image_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Confirm image exists
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          docker manifest inspect "${IMAGE_REF}" > /dev/null
+          echo "Scanning ${IMAGE_REF}"
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: image
+          image-ref: ${{ steps.image.outputs.ref }}
+          scanners: vuln
+          vuln-type: os,library
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-image.sarif
+          exit-code: 0
+
+      - name: Upload results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-container-image
+
+      - name: Upload audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-report-${{ github.run_number }}
+          path: trivy-image.sarif
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Add workflow summary
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+        run: |
+          {
+            echo "## Trivy Container Image Scan"
+            echo
+            echo "**Image:** \`${IMAGE_REF}\`"
+            echo
+            echo "The image was scanned for Medium, High, and Critical OS and library vulnerabilities."
+          } >> "${GITHUB_STEP_SUMMARY}"
