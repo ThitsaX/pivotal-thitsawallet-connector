@@ -70,7 +70,10 @@ public class PivotalConfiguration extends CoreConnectorConfiguration {
         private final int sdkConnectorPortNo;
         private final BigDecimal transactionAmountLimit;
 
+        private final Boolean isCalculateFee;
+
         public Settings() {
+
             this.supportedCurrenciesList = prop("supportedCurrencies", "MMK");
             this.supportedCurrencies = parseCurrencies(this.supportedCurrenciesList);
 
@@ -80,6 +83,7 @@ public class PivotalConfiguration extends CoreConnectorConfiguration {
             this.feeEngineEndpoint = prop("feeEngineEndpoint", "http://example.com:8082");
             this.transactionAmountLimit = propBigDecimal("transactionAmountLimit", BigDecimal.ZERO);
             this.sdkConnectorPortNo = propInt("sdkConnectorPortNo", 8080);
+            this.isCalculateFee = propBoolean("isCalculateFee", true);
         }
 
         private static BigDecimal propBigDecimal(String key, BigDecimal def) {

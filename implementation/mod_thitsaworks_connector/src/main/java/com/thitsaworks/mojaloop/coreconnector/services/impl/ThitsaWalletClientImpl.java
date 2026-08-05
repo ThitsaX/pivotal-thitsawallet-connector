@@ -17,6 +17,7 @@ package com.thitsaworks.mojaloop.coreconnector.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thitsaworks.mojaloop.coreconnector.PivotalConfiguration;
 import com.thitsaworks.mojaloop.coreconnector.component.exception.ThitsaConnectCustomException;
 import com.thitsaworks.mojaloop.coreconnector.component.mojaloop.ErrorCode;
 import com.thitsaworks.mojaloop.coreconnector.component.mojaloop.ErrorInformationResponse;
@@ -45,7 +46,6 @@ import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.ReservationForTr
 import com.thitsaworks.mojaloop.coreconnector.services.FeeEngineService;
 import com.thitsaworks.mojaloop.coreconnector.services.FspClientService;
 import com.thitsaworks.mojaloop.coreconnector.services.ThitsaWalletService;
-import com.thitsaworks.mojaloop.coreconnector.PivotalConfiguration;
 import okhttp3.logging.HttpLoggingInterceptor;
 import org.json.JSONException;
 import org.slf4j.Logger;
@@ -60,7 +60,6 @@ import retrofit2.converter.scalars.ScalarsConverterFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -244,23 +243,36 @@ public class ThitsaWalletClientImpl implements FspClientService {
                 idValue = this.utility.removePrefix(idValue);
             }
 
-            BigDecimal amount = new BigDecimal(request.getAmount());
+            BigDecimal feeAmount = new BigDecimal(0);
+            CatalystFeeApi.Response catalystFeeResponse = new CatalystFeeApi.Response(null);
 
-            CatalystFeeApi.Request catalystFeeRequest = new CatalystFeeApi.Request(
-                amount, request.getCurrency().toString(),
-                resolveScenario(request, amount));
+            if (this.settings.getIsCalculateFee()) {
 
-            LOG.info("Catalyst Fee Request from payee connector to Catalyst fee engine for transferId {} : {}",
-                request.getTransactionId(),
-                this.objectMapper.writeValueAsString(catalystFeeRequest));
+                BigDecimal amount = new BigDecimal(request.getAmount());
 
-            CatalystFeeApi.Response catalystFeeResponse = RetrofitRunner.invoke(
-                this.feeEngineService, catalystFeeRequest,
-                (s, r) -> s.calculateFee(catalystFeeRequest), this.feeEngineErrorDecoder).body();
+                CatalystFeeApi.Request catalystFeeRequest = new CatalystFeeApi.Request(
+                    amount,
+                    request.getCurrency()
+                           .toString(),
+                    resolveScenario(request, amount));
 
-            LOG.info("Catalyst Fee Response from Catalyst fee engine to payee connector for transferId {} : {}",
-                request.getTransactionId(),
-                this.objectMapper.writeValueAsString(catalystFeeResponse));
+                LOG.info("Catalyst Fee Request from payee connector to Catalyst fee engine for transferId {} : {}",
+                         request.getTransactionId(),
+                         this.objectMapper.writeValueAsString(catalystFeeRequest));
+
+                catalystFeeResponse = RetrofitRunner.invoke(
+                                                        this.feeEngineService, catalystFeeRequest,
+                                                        (s, r) -> s.calculateFee(catalystFeeRequest), this.feeEngineErrorDecoder)
+                                                    .body();
+
+                feeAmount =
+                    catalystFeeResponse.feeCalculationResultData()
+                                       .totalFeeAmount();
+
+                LOG.info("Catalyst Fee Response from Catalyst fee engine to payee connector for transferId {} : {}",
+                         request.getTransactionId(),
+                         this.objectMapper.writeValueAsString(catalystFeeResponse));
+            }
 
             // cbs quote call
 
@@ -304,14 +316,14 @@ public class ThitsaWalletClientImpl implements FspClientService {
                            .equals(AmountType.RECEIVE)) {
 
                     BigDecimal checkAmount = new BigDecimal(transferAmount);
-                    checkAmount = checkAmount.add(catalystFeeResponse.feeCalculationResultData().totalFeeAmount());
+                    checkAmount = checkAmount.add(feeAmount);
                     transferAmount = checkAmount.stripTrailingZeros().toPlainString();
 
                 }
                 else
                 {
                     BigDecimal checkAmount = new BigDecimal(transferAmount);
-                    checkAmount = checkAmount.subtract(catalystFeeResponse.feeCalculationResultData().totalFeeAmount());
+                    checkAmount = checkAmount.subtract(fee);
                     payeeReceiveAmount = checkAmount.stripTrailingZeros().toPlainString();
 
                 }
@@ -335,7 +347,10 @@ public class ThitsaWalletClientImpl implements FspClientService {
                 response.setExtensionList(request.getExtensionList());
                 response.setSupportedCurrencies(supportedCurrencies);
 
-                response = addFeeCalculationExtensions(response, catalystFeeResponse);
+                if (this.settings.getIsCalculateFee()) {
+
+                    response = addFeeCalculationExtensions(response, catalystFeeResponse);
+                }
             }
 
         } catch (Exception e) {
