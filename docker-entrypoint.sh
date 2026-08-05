@@ -23,4 +23,5 @@ exec java \
     "-DredisTtlSeconds=${REDIS_TTL_SECONDS}" \
     "-DsdkConnectorPortNo=${SDK_CONNECTOR_PORT_NO}" \
     "-DtransactionAmountLimit=${TRANSACTION_AMOUNT_LIMIT}" \
+    "-DisCalculateFee=${IS_CALCULATE_FEE}" \
     -jar app.jar
