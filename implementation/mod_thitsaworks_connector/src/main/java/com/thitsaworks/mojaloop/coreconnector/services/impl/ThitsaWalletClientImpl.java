@@ -323,7 +323,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
                 else
                 {
                     BigDecimal checkAmount = new BigDecimal(transferAmount);
-                    checkAmount = checkAmount.subtract(fee);
+                    checkAmount = checkAmount.subtract(feeAmount);
                     payeeReceiveAmount = checkAmount.stripTrailingZeros().toPlainString();
 
                 }
