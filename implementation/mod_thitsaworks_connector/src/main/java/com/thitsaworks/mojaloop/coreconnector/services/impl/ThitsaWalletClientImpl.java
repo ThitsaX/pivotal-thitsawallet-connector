@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.thitsaworks.mojaloop.coreconnector.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -105,11 +106,13 @@ public class ThitsaWalletClientImpl implements FspClientService {
                                   Utility utility) {
 
         this.settings = settings;
-        this.thitsaWalletService = new RetrofitServiceBuilder<>(ThitsaWalletService.class,
-                                                                this.settings.getBackendEndpoint())
+        this.thitsaWalletService = new RetrofitServiceBuilder<>(
+            ThitsaWalletService.class,
+            this.settings.getBackendEndpoint())
                                        .withHttpLogging(HttpLoggingInterceptor.Level.BODY, true)
                                        .withDisableSSLVerification()
-                                       .withConverterFactories(new NullOrEmptyConverterFactory(),
+                                       .withConverterFactories(
+                                           new NullOrEmptyConverterFactory(),
                                            ScalarsConverterFactory.create(),
                                            JacksonConverterFactory.create())
                                        .build();
@@ -118,7 +121,8 @@ public class ThitsaWalletClientImpl implements FspClientService {
             FeeEngineService.class, this.settings.getFeeEngineEndpoint())
                                     .withHttpLogging(HttpLoggingInterceptor.Level.BODY, true)
                                     .withDisableSSLVerification()
-                                    .withConverterFactories(new NullOrEmptyConverterFactory(),
+                                    .withConverterFactories(
+                                        new NullOrEmptyConverterFactory(),
                                         ScalarsConverterFactory.create(),
                                         JacksonConverterFactory.create())
                                     .build();
@@ -146,19 +150,20 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
             String finalIdValue = idValue;
 
-            LOG.info("Find User Quote Request from payee cc to thitsawallet system for idValue {} : {}",
-                request.getIdValue(),
-                this.objectMapper.writeValueAsString(request));
+            LOG.info(
+                "Find User Quote Request from payee connector to thitsawallet system for idValue {} : {}",
+                request.getIdValue(), this.objectMapper.writeValueAsString(request));
 
-            List<String> supportedCurrencies = Arrays.stream(this.settings.getSupportedCurrenciesList()
-                                                                          .split(","))
-                                                     .map(String::trim)
-                                                     .collect(Collectors.toList());
+            List<String> supportedCurrencies = Arrays
+                                                   .stream(this.settings
+                                                               .getSupportedCurrenciesList()
+                                                               .split(","))
+                                                   .map(String::trim)
+                                                   .collect(Collectors.toList());
 
-            Response<LookUpApi.Response> apiResponse = RetrofitRunner.invoke(this.thitsaWalletService,
-                                                                             null,
-                                                                             (s, r) -> s.doLookUp(finalIdValue),
-                                                                             this.errorDecoder);
+            Response<LookUpApi.Response> apiResponse = RetrofitRunner.invoke(
+                this.thitsaWalletService, null, (s, r) -> s.doLookUp(finalIdValue),
+                this.errorDecoder);
 
             var lookUpResponse = apiResponse.body();
 
@@ -185,12 +190,11 @@ public class ThitsaWalletClientImpl implements FspClientService {
             try {
                 if (e instanceof RetrofitRunner.InvocationException) {
 
-                    Object errorResponse =
-                        ((RetrofitRunner.InvocationException) e).getErrorResponse();
+                    Object errorResponse = ((RetrofitRunner.InvocationException) e).getErrorResponse();
 
-                    LOG.error("Find User LookUp Error Response from payee cc for idValue {} : {}",
-                        request.getIdValue(),
-                        this.objectMapper.writeValueAsString(
+                    LOG.error(
+                        "Find User LookUp Error Response from payee connector for idValue {} : {}",
+                        request.getIdValue(), this.objectMapper.writeValueAsString(
                             errorResponse != null ? errorResponse : e.getMessage()));
 
                     response.setError(
@@ -198,17 +202,17 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
                 } else if (e instanceof ThitsaConnectCustomException) {
 
-                    LOG.error("Find User LookUp Error Response from payee cc for idValue {} : {}",
-                        request.getIdValue(),
-                        e.getMessage());
+                    LOG.error(
+                        "Find User LookUp Error Response from payee connector for idValue {} : {}",
+                        request.getIdValue(), e.getMessage());
 
                     response.setError(this.thitsawalletErrorProcessor.process(e));
 
                 } else {
 
-                    LOG.error("Find User LookUp Error Response from payee cc for idValue {} : {}",
-                        request.getIdValue(),
-                        e.getMessage());
+                    LOG.error(
+                        "Find User LookUp Error Response from payee connector for idValue {} : {}",
+                        request.getIdValue(), e.getMessage());
 
                     throw new RuntimeException("Payee LookUp failed.");
 
@@ -230,10 +234,12 @@ public class ThitsaWalletClientImpl implements FspClientService {
         try {
 
             if (request == null || !StringUtils.hasLength(request.getQuotedId()) ||
-                !StringUtils.hasLength(request.getTransactionId()) || request.getAmount() == null) {
+                    !StringUtils.hasLength(request.getTransactionId()) ||
+                    request.getAmount() == null) {
 
-                throw new ThitsaConnectCustomException(ErrorCode.getErrorResponse(ErrorCode.MISSING_MANDATORY_ELEMENT,
-                                                                                  "Required field missing"));
+                throw new ThitsaConnectCustomException(
+                    ErrorCode.getErrorResponse(
+                        ErrorCode.MISSING_MANDATORY_ELEMENT, "Required field missing"));
             }
 
             String idValue = request.getPayee().getIdValue();
@@ -252,76 +258,75 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
                 CatalystFeeApi.Request catalystFeeRequest = new CatalystFeeApi.Request(
                     amount,
-                    request.getCurrency()
-                           .toString(),
-                    resolveScenario(request, amount));
+                    request.getCurrency().toString(), resolveScenario(request, amount));
 
-                LOG.info("Catalyst Fee Request from payee connector to Catalyst fee engine for transferId {} : {}",
-                         request.getTransactionId(),
-                         this.objectMapper.writeValueAsString(catalystFeeRequest));
+                LOG.info(
+                    "Catalyst Fee Request from payee connector to Catalyst fee engine for transferId {} : {}",
+                    request.getTransactionId(),
+                    this.objectMapper.writeValueAsString(catalystFeeRequest));
 
-                catalystFeeResponse = RetrofitRunner.invoke(
-                                                        this.feeEngineService, catalystFeeRequest,
-                                                        (s, r) -> s.calculateFee(catalystFeeRequest), this.feeEngineErrorDecoder)
-                                                    .body();
+                catalystFeeResponse = RetrofitRunner
+                                          .invoke(
+                                              this.feeEngineService, catalystFeeRequest,
+                                              (s, r) -> s.calculateFee(catalystFeeRequest),
+                                              this.feeEngineErrorDecoder)
+                                          .body();
 
-                feeAmount =
-                    catalystFeeResponse.feeCalculationResultData()
-                                       .totalFeeAmount();
+                feeAmount = catalystFeeResponse.feeCalculationResultData().totalFeeAmount();
 
-                LOG.info("Catalyst Fee Response from Catalyst fee engine to payee connector for transferId {} : {}",
-                         request.getTransactionId(),
-                         this.objectMapper.writeValueAsString(catalystFeeResponse));
+                LOG.info(
+                    "Catalyst Fee Response from Catalyst fee engine to payee connector for transferId {} : {}",
+                    request.getTransactionId(),
+                    this.objectMapper.writeValueAsString(catalystFeeResponse));
             }
 
             // cbs quote call
 
-            QuoteApi.Request quoteRequest = new QuoteApi.Request(idValue, new BigDecimal(request.getAmount()));
+            QuoteApi.Request quoteRequest = new QuoteApi.Request(
+                idValue, new BigDecimal(request.getAmount()));
 
-            LOG.info("Calculate Fee Request from payee cc to thitsawallet system for transferId {} : {}",
-                request.getTransactionId(),
-                this.objectMapper.writeValueAsString(quoteRequest));
+            LOG.info(
+                "Calculate Fee Request from payee connector to thitsawallet system for transferId {} : {}",
+                request.getTransactionId(), this.objectMapper.writeValueAsString(quoteRequest));
 
-            Response<QuoteApi.Response> apiResponse = RetrofitRunner.invoke(this.thitsaWalletService,
-                                                                            quoteRequest,
-                                                                            (s, r) -> s.doQuote(
-                                                                                quoteRequest),
-                                                                            this.errorDecoder);
+            Response<QuoteApi.Response> apiResponse = RetrofitRunner.invoke(
+                this.thitsaWalletService, quoteRequest, (s, r) -> s.doQuote(quoteRequest),
+                this.errorDecoder);
 
             var quoteResponse = apiResponse.body();
 
-            LOG.info("Calculate Fee Response from thitsawallet system to payee cc for transferId {} : {}",
-                request.getTransactionId(),
-                this.objectMapper.writeValueAsString(apiResponse));
+            LOG.info(
+                "Calculate Fee Response from thitsawallet system to payee connector for transferId {} : {}",
+                request.getTransactionId(), this.objectMapper.writeValueAsString(apiResponse));
 
             if (quoteResponse != null) {
-                BigDecimal fee = apiResponse.body().fee() == null ? new BigDecimal(0.00) : apiResponse.body()
-                                                                                                      .fee();
-                String formattedFee = fee.setScale(2, RoundingMode.HALF_UP)
-                                         .stripTrailingZeros()
-                                         .toPlainString()
-                                         .stripTrailing();
+                BigDecimal fee = apiResponse.body().fee() == null ? new BigDecimal(0.00) :
+                                     apiResponse.body().fee();
+                String formattedFee = fee
+                                          .setScale(2, RoundingMode.HALF_UP)
+                                          .stripTrailingZeros()
+                                          .toPlainString()
+                                          .stripTrailing();
 
-                List<String> supportedCurrencies = Arrays.stream(this.settings.getSupportedCurrenciesList()
-                                                                              .split(","))
-                                                         .map(String::trim)
-                                                         .collect(Collectors.toList());
+                List<String> supportedCurrencies = Arrays
+                                                       .stream(this.settings
+                                                                   .getSupportedCurrenciesList()
+                                                                   .split(","))
+                                                       .map(String::trim)
+                                                       .collect(Collectors.toList());
                 response.setQuoteId(request.getQuotedId());
                 response.setTransactionId(request.getTransactionId());
 
                 String transferAmount = request.getAmount();
                 String payeeReceiveAmount = request.getAmount();
 
-                if (request.getAmountType()
-                           .equals(AmountType.RECEIVE)) {
+                if (request.getAmountType().equals(AmountType.RECEIVE)) {
 
                     BigDecimal checkAmount = new BigDecimal(transferAmount);
                     checkAmount = checkAmount.add(feeAmount);
                     transferAmount = checkAmount.stripTrailingZeros().toPlainString();
 
-                }
-                else
-                {
+                } else {
                     BigDecimal checkAmount = new BigDecimal(transferAmount);
                     checkAmount = checkAmount.subtract(feeAmount);
                     payeeReceiveAmount = checkAmount.stripTrailingZeros().toPlainString();
@@ -358,12 +363,11 @@ public class ThitsaWalletClientImpl implements FspClientService {
             try {
                 if (e instanceof RetrofitRunner.InvocationException) {
 
-                    Object errorResponse =
-                        ((RetrofitRunner.InvocationException) e).getErrorResponse();
+                    Object errorResponse = ((RetrofitRunner.InvocationException) e).getErrorResponse();
 
-                    LOG.error("Calculate Fee Error Response from payee cc for transferId {} : {}",
-                        request.getTransactionId(),
-                        this.objectMapper.writeValueAsString(
+                    LOG.error(
+                        "Calculate Fee Error Response from payee connector for transferId {} : {}",
+                        request.getTransactionId(), this.objectMapper.writeValueAsString(
                             errorResponse != null ? errorResponse : e.getMessage()));
 
                     response.setError(
@@ -371,17 +375,17 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
                 } else if (e instanceof ThitsaConnectCustomException) {
 
-                    LOG.error("Calculate Fee Error Response from payee cc for transferId {} : {}",
-                        request.getTransactionId(),
-                        e.getMessage());
+                    LOG.error(
+                        "Calculate Fee Error Response from payee connector for transferId {} : {}",
+                        request.getTransactionId(), e.getMessage());
 
                     response.setError(this.thitsawalletErrorProcessor.process(e));
 
                 } else {
 
-                    LOG.error("Calculate Fee Error Response from payee cc for transferId {} : {}",
-                        request.getTransactionId(),
-                        e.getMessage());
+                    LOG.error(
+                        "Calculate Fee Error Response from payee connector for transferId {} : {}",
+                        request.getTransactionId(), e.getMessage());
 
                     throw new RuntimeException("Payee Quote failed.");
 
@@ -400,40 +404,62 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
         ReservationForTransfer.Response response = new ReservationForTransfer.Response();
 
+        return response;
+    }
+
+    @Override
+    public ConfirmationForTransfer.Response doConfirmationForTransfer(ConfirmationForTransfer.Request request) {
+
+        ConfirmationForTransfer.Response response = new ConfirmationForTransfer.Response();
+
         try {
 
-            if (request == null || request.getTo() == null || request.getTo().getIdValue().isEmpty() ||
-                request.getAmount() == null) {
+            if (request == null || request.getQuoteRequest() == null ||
+                    request.getQuoteRequest().getBody() == null ||
+                    request.getQuoteRequest().getBody().getPayee() == null ||
+                    request.getQuoteRequest().getBody().getPayee().getPartyIdInfo() == null ||
+                    request
+                        .getQuoteRequest()
+                        .getBody()
+                        .getPayee()
+                        .getPartyIdInfo()
+                        .getPartyIdentifier()
+                        .isEmpty() || request.getQuoteRequest().getBody().getAmount() == null) {
 
-                throw new ThitsaConnectCustomException(ErrorCode.getErrorResponse(ErrorCode.MISSING_MANDATORY_ELEMENT,
-                                                                                  "Required field missing"));
+                throw new ThitsaConnectCustomException(
+                    ErrorCode.getErrorResponse(
+                        ErrorCode.MISSING_MANDATORY_ELEMENT, "Required field missing"));
             }
 
-            String idValue = request.getTo().getIdValue();
+            String idValue = request
+                                 .getQuoteRequest()
+                                 .getBody()
+                                 .getPayee()
+                                 .getPartyIdInfo()
+                                 .getPartyIdentifier();
 
             if (this.settings.getIsPrefix().toLowerCase().equals("true")) {
 
                 idValue = this.utility.removePrefix(idValue);
             }
 
-            TransferApi.Request transferRequest = new TransferApi.Request(idValue,
-                                                                              request.getQuote()
-                                                                                     .getPayeeReceiveAmount(),
-                                                                          request.getTransferId());
+            TransferApi.Request transferRequest = new TransferApi.Request(
+                idValue,
+                request.getQuoteRequest().getBody().getPayeeReceiveAmount(),
+                request.getTransferId());
 
-            LOG.info("Credit Amount Request from payee cc to thitsawallet system for transferId {} : {}",
-                request.getTransferId(),
-                this.objectMapper.writeValueAsString(transferRequest));
+            LOG.info(
+                "Credit Amount Request from payee connector to thitsawallet system for transferId {} : {}",
+                request.getTransferId(), this.objectMapper.writeValueAsString(transferRequest));
 
-            Response<TransferApi.Response> apiResponse = RetrofitRunner.invoke(this.thitsaWalletService,
-                                                                               transferRequest,
-                                                                               (s, r) -> s.doTransfer(transferRequest),
-                                                                               this.errorDecoder);
+            Response<TransferApi.Response> apiResponse = RetrofitRunner.invoke(
+                this.thitsaWalletService, transferRequest, (s, r) -> s.doTransfer(transferRequest),
+                this.errorDecoder);
             var transferResponse = apiResponse.body();
 
-            LOG.info("Credit Amount Response from thitsawallet system to payee cc for transferId {} : {}",
-                request.getTransferId(),
-                this.objectMapper.writeValueAsString(transferResponse));
+            LOG.info(
+                "Credit Amount Response from thitsawallet system to payee connector for transferId {} : {}",
+                request.getTransferId(), this.objectMapper.writeValueAsString(transferResponse));
 
             if (transferResponse != null) {
 
@@ -446,29 +472,32 @@ public class ThitsaWalletClientImpl implements FspClientService {
             try {
                 if (e instanceof RetrofitRunner.InvocationException) {
 
-                    Object errorResponse =
-                        ((RetrofitRunner.InvocationException) e).getErrorResponse();
+                    Object errorResponse = ((RetrofitRunner.InvocationException) e).getErrorResponse();
 
-                    LOG.error("Credit Amount Error Response from payee cc for transferId {} : {}",
-                        request.getTransferId(),
-                        this.objectMapper.writeValueAsString(
+                    LOG.error(
+                        "Credit Amount Error Response from payee connector for transferId {} : {}",
+                        request.getTransferId(), this.objectMapper.writeValueAsString(
                             errorResponse != null ? errorResponse : e.getMessage()));
 
-                    response.setError(
-                        this.processInvocationException((RetrofitRunner.InvocationException) e));
+                    response.setError(this
+                                          .processInvocationException(
+                                              (RetrofitRunner.InvocationException) e)
+                                          .getErrorInformation());
+
                 } else if (e instanceof ThitsaConnectCustomException) {
 
-                    LOG.error("Credit Amount Error Response from payee cc for transferId {} : {}",
-                        request.getTransferId(),
-                        e.getMessage());
+                    LOG.error(
+                        "Credit Amount Error Response from payee connector for transferId {} : {}",
+                        request.getTransferId(), e.getMessage());
 
-                    response.setError(this.thitsawalletErrorProcessor.process(e));
+                    response.setError(
+                        this.thitsawalletErrorProcessor.process(e).getErrorInformation());
 
                 } else {
 
-                    LOG.error("Credit Amount Error Response from payee cc for transferId {} : {}",
-                        request.getTransferId(),
-                        e.getMessage());
+                    LOG.error(
+                        "Credit Amount Error Response from payee connector for transferId {} : {}",
+                        request.getTransferId(), e.getMessage());
 
                     throw new RuntimeException("Payee Transfer failed.");
 
@@ -481,22 +510,12 @@ public class ThitsaWalletClientImpl implements FspClientService {
         return response;
     }
 
-    @Override
-    public ConfirmationForTransfer.Response doConfirmationForTransfer(ConfirmationForTransfer.Request request) {
-
-        ConfirmationForTransfer.Response response = new ConfirmationForTransfer.Response();
-
-        response.setHomeTransactionId(request.getHomeTransactionId());
-
-        return response;
-    }
-
     private DoQuote.Response addFeeCalculationExtensions(DoQuote.Response response,
                                                          CatalystFeeApi.Response calculateFeeResponse) {
 
         if (calculateFeeResponse == null ||
-            calculateFeeResponse.feeCalculationResultData() == null ||
-            calculateFeeResponse.feeCalculationResultData().feeSplits() == null) {
+                calculateFeeResponse.feeCalculationResultData() == null ||
+                calculateFeeResponse.feeCalculationResultData().feeSplits() == null) {
             return response;
         }
 
@@ -504,12 +523,8 @@ public class ThitsaWalletClientImpl implements FspClientService {
         ExtensionList extensionList =
             response.getExtensionList() != null ? response.getExtensionList() : new ExtensionList();
 
-        addExtension(
-            extensionList, "payerFeeCatalyst",
-            feeSplitAmount(result, "payerFeeCatalyst"));
-        addExtension(
-            extensionList, "payeeFeeCatalyst",
-            feeSplitAmount(result, "payeeFeeCatalyst"));
+        addExtension(extensionList, "payerFeeCatalyst", feeSplitAmount(result, "payerFeeCatalyst"));
+        addExtension(extensionList, "payeeFeeCatalyst", feeSplitAmount(result, "payeeFeeCatalyst"));
         addExtension(
             extensionList, "schemeFeeCatalyst",
             feeSplitAmount(result, "schemeFeeCatalyst"));
@@ -562,7 +577,6 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
         return "";
     }
-
 
     private ErrorInformationResponse processInvocationException(RetrofitRunner.InvocationException exception)
         throws JSONException {
