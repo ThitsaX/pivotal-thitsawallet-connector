@@ -252,7 +252,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
             BigDecimal feeAmount = new BigDecimal(0);
             CatalystFeeApi.Response catalystFeeResponse = new CatalystFeeApi.Response(null);
 
-            if (this.settings.getIsCalculateFee()) {
+            if (this.settings.getIsCalculateFee() && ("PERSON_TO_PERSON".equals(request.getSubScenario()))) {
 
                 BigDecimal amount = new BigDecimal(request.getAmount());
 
