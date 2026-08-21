@@ -79,16 +79,24 @@ public class ThitsaWalletErrorProcessor {
     private ErrorInformationResponse handleThitsaConnectCustomException(
         ThitsaConnectCustomException exception) throws JSONException {
 
-        if (exception.getMessage() == null) {
+        String message = exception.getMessage();
+
+        if (message == null) {
             return buildFromErrorCode(ErrorCode.GENERIC_DOWNSTREAM_ERROR_PAYEE, null);
         }
 
-        JSONObject errorResponse = new JSONObject(exception.getMessage());
-        JSONObject errorInformation = errorResponse.getJSONObject("errorInformation");
+        String[] errorInfo = message.split(":", 3);
 
-        return buildErrorResponse(
-            String.valueOf(errorInformation.getInt("statusCode")),
-            errorInformation.getString("description"));
+        if (errorInfo.length < 2) {
+            return buildFromErrorCode(ErrorCode.GENERIC_DOWNSTREAM_ERROR_PAYEE, message);
+        }
+
+        String statusCode = errorInfo[0];
+        String description = errorInfo.length > 2 ? errorInfo[2].replace("\"", "") : errorInfo[1];
+
+        LOG.info("errorInfo: {}", errorInfo.length > 2 ? errorInfo[2] : "N/A");
+
+        return buildErrorResponse(statusCode, description);
     }
 
     private ErrorInformationResponse buildFromErrorCode(ErrorCode errorCode, String customMessage)

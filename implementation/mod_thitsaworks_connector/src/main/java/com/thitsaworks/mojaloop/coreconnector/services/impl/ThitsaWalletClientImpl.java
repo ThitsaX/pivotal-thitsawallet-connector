@@ -238,8 +238,9 @@ public class ThitsaWalletClientImpl implements FspClientService {
                     request.getAmount() == null) {
 
                 throw new ThitsaConnectCustomException(
-                    ErrorCode.getErrorResponse(
-                        ErrorCode.MISSING_MANDATORY_ELEMENT, "Required field missing"));
+                    ErrorCode.MISSING_MANDATORY_ELEMENT.getStatusCode().toString() + ":" +
+                        ErrorCode.MISSING_MANDATORY_ELEMENT.getDefaultMessage() + ":" +
+                        "Required field missing");
             }
 
             String idValue = request.getPayee().getIdValue();
@@ -427,8 +428,9 @@ public class ThitsaWalletClientImpl implements FspClientService {
                         .isEmpty() || request.getQuoteRequest().getBody().getAmount() == null) {
 
                 throw new ThitsaConnectCustomException(
-                    ErrorCode.getErrorResponse(
-                        ErrorCode.MISSING_MANDATORY_ELEMENT, "Required field missing"));
+                    ErrorCode.MISSING_MANDATORY_ELEMENT.getStatusCode().toString() + ":" +
+                        ErrorCode.MISSING_MANDATORY_ELEMENT.getDefaultMessage() + ":" +
+                        "Required field missing");
             }
 
             String idValue = request
