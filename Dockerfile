@@ -62,4 +62,15 @@ ENV OUTBOUND_ENDPOINT="http://example.com:4001"
 ENV TRANSACTION_AMOUNT_LIMIT=0
 ENV IS_CALCULATE_FEE=true
 
+
+# FSPIOP JWS (hub-facing leg). Signing is off by default and is enabled per
+# deployment; key material never appears here — it is read from Vault.
+ENV FSPIOP_USE_JWS="false"
+ENV VAULT_URL=""
+ENV VAULT_ROLE=""
+ENV VAULT_KUBERNETES_AUTH_PATH="kubernetes"
+ENV VAULT_KV_MOUNT="secret"
+ENV VAULT_JWS_KEY_PATH_PREFIX="pivotal/jwskey"
+ENV VAULT_SERVICE_ACCOUNT_TOKEN_PATH="/var/run/secrets/kubernetes.io/serviceaccount/token"
+
 ENTRYPOINT ["/opt/app/docker-entrypoint.sh"]

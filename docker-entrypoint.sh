@@ -2,6 +2,9 @@
 set -eu
 
 
+# FSPIOP JWS (hub-facing leg). Signing is off unless FSPIOP_USE_JWS is set, and every new
+# variable carries a default, so a deployment that sets none of them behaves as before.
+# Key material is never passed here: the connector reads it from Vault.
 exec java \
     "-DconnectorId=${CONNECTOR_ID}" \
     "-DsupportedCurrencies=${SUPPORTED_CURRENCIES}" \
@@ -24,4 +27,11 @@ exec java \
     "-DsdkConnectorPortNo=${SDK_CONNECTOR_PORT_NO}" \
     "-DtransactionAmountLimit=${TRANSACTION_AMOUNT_LIMIT}" \
     "-DisCalculateFee=${IS_CALCULATE_FEE}" \
+    "-DfspiopUseJws=${FSPIOP_USE_JWS:-false}" \
+    "-DvaultUrl=${VAULT_URL:-}" \
+    "-DvaultRole=${VAULT_ROLE:-}" \
+    "-DvaultKubernetesAuthPath=${VAULT_KUBERNETES_AUTH_PATH:-kubernetes}" \
+    "-DvaultKvMount=${VAULT_KV_MOUNT:-secret}" \
+    "-DvaultJwsKeyPathPrefix=${VAULT_JWS_KEY_PATH_PREFIX:-pivotal/jwskey}" \
+    "-DvaultServiceAccountTokenPath=${VAULT_SERVICE_ACCOUNT_TOKEN_PATH:-/var/run/secrets/kubernetes.io/serviceaccount/token}" \
     -jar app.jar
