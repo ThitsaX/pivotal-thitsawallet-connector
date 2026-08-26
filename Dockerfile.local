@@ -1,0 +1,51 @@
+# Local-build image for the k3d dev cluster.
+#
+# The published Dockerfile builds from source and resolves mod-pivotal-connector-api
+# from GitHub Packages. Version 0.0.25 has not been published there yet (it exists
+# only in the local Maven repository), so that build cannot succeed off this machine.
+#
+# This variant skips the build stage and packages a jar already produced by:
+#   mvn -pl implementation/mod_thitsaworks_connector -am clean package -DskipTests
+#
+# Runtime config, entrypoint and defaults are identical to Dockerfile. Delete this
+# file once v0.0.25 is tagged and the publish workflow has run.
+FROM eclipse-temurin:21-jdk-alpine
+WORKDIR /opt/app
+
+COPY implementation/mod_thitsaworks_connector/target/app.jar /opt/app/app.jar
+COPY docker-entrypoint.sh /opt/app/
+RUN chmod +x /opt/app/docker-entrypoint.sh
+
+EXPOSE 3003
+
+ENV CONNECTOR_ID="thitsawallet"
+ENV SUPPORTED_CURRENCIES="MMK"
+ENV CONNECTOR_ILP_SECRET="1234"
+ENV NATS_URL="nats://example.com:4222"
+ENV FSPIOP_STREAM_NAME="PIVOTAL_FSPIOP"
+ENV PIVOTAL_AUDIT_STREAM_NAME="PIVOTAL_AUDIT"
+ENV CONNECTOR_FORCE_PATCH_ERROR="false"
+ENV FSPIOP_PARTIES_URL="http://example.com:4001"
+ENV FSPIOP_QUOTES_URL="http://example.com:4001"
+ENV FSPIOP_TRANSFERS_URL="http://example.com:4001"
+ENV FSPIOP_SWITCH_ID="hub"
+ENV BACKEND_ENDPOINT="http://example.com:8081"
+ENV BACKEND_API_TIMEOUT_MS=30000
+ENV IS_PREFIX="false"
+ENV REDIS_URL="redis://example.com:7379"
+ENV REDIS_TTL_SECONDS=1200
+ENV FEE_ENGINE_ENDPOINT="http://example.com:8082/"
+ENV SDK_CONNECTOR_PORT_NO=8080
+ENV OUTBOUND_ENDPOINT="http://example.com:4001"
+ENV TRANSACTION_AMOUNT_LIMIT=0
+ENV IS_CALCULATE_FEE=true
+
+ENV FSPIOP_USE_JWS="false"
+ENV VAULT_URL=""
+ENV VAULT_ROLE=""
+ENV VAULT_KUBERNETES_AUTH_PATH="kubernetes"
+ENV VAULT_KV_MOUNT="secret"
+ENV VAULT_JWS_KEY_PATH_PREFIX="pivotal/jwskey"
+ENV VAULT_SERVICE_ACCOUNT_TOKEN_PATH="/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+ENTRYPOINT ["/opt/app/docker-entrypoint.sh"]
