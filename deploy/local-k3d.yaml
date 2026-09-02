@@ -76,6 +76,63 @@ spec:
             - { name: VAULT_KUBERNETES_AUTH_PATH, value: "kubernetes" }
             - { name: VAULT_KV_MOUNT,             value: "secret" }
             - { name: VAULT_JWS_KEY_PATH_PREFIX,  value: "pivotal/jwskey" }
+            # Hub-facing mutual TLS. Off here because the Hub services in the Compose
+            # stack listen on plain HTTP and hold no client certificate; the paths are
+            # wired so enabling it is a one-value change once the peer can accept it.
+            - { name: FSPIOP_USE_MUTUAL_TLS,      value: "false" }
+            - { name: FSPIOP_MTLS_CA_PATH,          value: "/etc/pivotal/hub-ca/hub-ca.pem" }
+            - { name: FSPIOP_MTLS_CLIENT_CERT_PATH, value: "/etc/pivotal/hub-client-tls/tls.crt" }
+            - { name: FSPIOP_MTLS_CLIENT_KEY_PATH,  value: "/etc/pivotal/hub-client-tls/tls.key" }
           resources:
             requests: { memory: "384Mi", cpu: "100m" }
             limits:   { memory: "1Gi" }
+          volumeMounts:
+            - name: hub-ca-bundle
+              mountPath: /etc/pivotal/hub-ca
+              readOnly: true
+            - name: hub-client-tls
+              mountPath: /etc/pivotal/hub-client-tls
+              readOnly: true
+      volumes:
+        # The Hub CA bundle reaches connectors this way and no other: they have
+        # no MySQL access, so the registry cannot deliver it. This Secret is the
+        # authoritative store for the bundle, not a mirror of one.
+        - name: hub-ca-bundle
+          secret:
+            secretName: hub-ca-bundle
+            optional: true
+        # This connector's own client leaf. Each connector gets its own rather than
+        # sharing one, so a compromised certificate can be revoked for that tenant
+        # alone -- and so the Hub can tell which connector a connection came from.
+        - name: hub-client-tls
+          secret:
+            secretName: wallet2-connector-hub-client-tls
+            optional: true
+---
+# Issued from Pivotal's own Hub-facing CA, which is registered with the Hub. Renewed
+# a month before it expires, into the Secret mounted above; the connector re-reads it
+# without a restart.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wallet2-connector-hub-client
+  namespace: pivotal
+spec:
+  secretName: wallet2-connector-hub-client-tls
+  commonName: wallet2-connector.pivotal
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    # cert-manager writes PKCS#1 unless told otherwise, and the JDK cannot read it --
+    # only OpenSSL-based stacks can. Asking for PKCS#8 at issuance keeps the connector
+    # free of a second PEM parser for a difference that carries no meaning.
+    encoding: PKCS8
+  usages:
+    - client auth
+    - digital signature
+    - key encipherment
+  issuerRef:
+    name: pki-hub-client
+    kind: ClusterIssuer

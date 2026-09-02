@@ -2,9 +2,10 @@
 set -eu
 
 
-# FSPIOP JWS (hub-facing leg). Signing is off unless FSPIOP_USE_JWS is set, and every new
+# FSPIOP JWS and mutual TLS (hub-facing leg). Both are off unless explicitly enabled, and every
 # variable carries a default, so a deployment that sets none of them behaves as before.
-# Key material is never passed here: the connector reads it from Vault.
+# Key material is never passed here: the signing key comes from Vault, and the client certificate
+# is read from a mounted Secret so a renewal reaches the connector without a new image.
 exec java \
     "-DconnectorId=${CONNECTOR_ID}" \
     "-DsupportedCurrencies=${SUPPORTED_CURRENCIES}" \
@@ -34,4 +35,9 @@ exec java \
     "-DvaultKvMount=${VAULT_KV_MOUNT:-secret}" \
     "-DvaultJwsKeyPathPrefix=${VAULT_JWS_KEY_PATH_PREFIX:-pivotal/jwskey}" \
     "-DvaultServiceAccountTokenPath=${VAULT_SERVICE_ACCOUNT_TOKEN_PATH:-/var/run/secrets/kubernetes.io/serviceaccount/token}" \
+    "-DfspiopUseMutualTls=${FSPIOP_USE_MUTUAL_TLS:-false}" \
+    "-DfspiopMtlsCaPath=${FSPIOP_MTLS_CA_PATH:-}" \
+    "-DfspiopMtlsClientCertPath=${FSPIOP_MTLS_CLIENT_CERT_PATH:-}" \
+    "-DfspiopMtlsClientKeyPath=${FSPIOP_MTLS_CLIENT_KEY_PATH:-}" \
+    "-DfspiopMtlsReloadIntervalMs=${FSPIOP_MTLS_RELOAD_INTERVAL_MS:-60000}" \
     -jar app.jar
