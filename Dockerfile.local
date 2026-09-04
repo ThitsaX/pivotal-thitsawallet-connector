@@ -1,14 +1,14 @@
 # Local-build image for the k3d dev cluster.
 #
-# The published Dockerfile builds from source and resolves mod-pivotal-connector-api
-# from GitHub Packages. Version 0.0.25 has not been published there yet (it exists
-# only in the local Maven repository), so that build cannot succeed off this machine.
+# Kept only as a fallback. The published Dockerfile builds from source and resolves
+# mod-pivotal-connector-api from GitHub Packages, which now carries the version this
+# connector depends on, so that build should succeed anywhere. Delete this file once
+# a build from the real Dockerfile is confirmed.
 #
 # This variant skips the build stage and packages a jar already produced by:
 #   mvn -pl implementation/mod_thitsaworks_connector -am clean package -DskipTests
 #
-# Runtime config, entrypoint and defaults are identical to Dockerfile. Delete this
-# file once v0.0.25 is tagged and the publish workflow has run.
+# Runtime config, entrypoint and defaults are identical to Dockerfile.
 FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /opt/app
 

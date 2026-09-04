@@ -19,7 +19,7 @@
     <dependency>
       <groupId>com.thitsaworks.mojaloop.coreconnector</groupId>
       <artifactId>mod-pivotal-connector-api</artifactId>
-      <version>0.0.25</version>
+      <version>0.0.26</version>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
