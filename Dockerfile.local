@@ -1,0 +1,57 @@
+# Local-build image for the k3d dev cluster.
+#
+# Kept only as a fallback. The published Dockerfile builds from source and resolves
+# mod-pivotal-connector-api from GitHub Packages, which now carries the version this
+# connector depends on, so that build should succeed anywhere. Delete this file once
+# a build from the real Dockerfile is confirmed.
+#
+# This variant skips the build stage and packages a jar already produced by:
+#   mvn -pl implementation/mod_thitsaworks_connector -am clean package -DskipTests
+#
+# Runtime config, entrypoint and defaults are identical to Dockerfile.
+FROM eclipse-temurin:21-jdk-alpine
+WORKDIR /opt/app
+
+COPY implementation/mod_thitsaworks_connector/target/app.jar /opt/app/app.jar
+COPY docker-entrypoint.sh /opt/app/
+RUN chmod +x /opt/app/docker-entrypoint.sh
+
+EXPOSE 3003
+
+ENV CONNECTOR_ID="thitsawallet"
+ENV SUPPORTED_CURRENCIES="MMK"
+ENV CONNECTOR_ILP_SECRET="1234"
+ENV NATS_URL="nats://example.com:4222"
+ENV FSPIOP_STREAM_NAME="PIVOTAL_FSPIOP"
+ENV PIVOTAL_AUDIT_STREAM_NAME="PIVOTAL_AUDIT"
+ENV CONNECTOR_FORCE_PATCH_ERROR="false"
+ENV FSPIOP_PARTIES_URL="http://example.com:4001"
+ENV FSPIOP_QUOTES_URL="http://example.com:4001"
+ENV FSPIOP_TRANSFERS_URL="http://example.com:4001"
+ENV FSPIOP_SWITCH_ID="hub"
+ENV BACKEND_ENDPOINT="http://example.com:8081"
+ENV BACKEND_API_TIMEOUT_MS=30000
+ENV IS_PREFIX="false"
+ENV REDIS_URL="redis://example.com:7379"
+ENV REDIS_TTL_SECONDS=1200
+ENV FEE_ENGINE_ENDPOINT="http://example.com:8082/"
+ENV SDK_CONNECTOR_PORT_NO=8080
+ENV OUTBOUND_ENDPOINT="http://example.com:4001"
+ENV TRANSACTION_AMOUNT_LIMIT=0
+ENV IS_CALCULATE_FEE=true
+
+ENV FSPIOP_USE_JWS="false"
+ENV VAULT_URL=""
+ENV VAULT_ROLE=""
+ENV VAULT_KUBERNETES_AUTH_PATH="kubernetes"
+ENV VAULT_KV_MOUNT="secret"
+ENV VAULT_JWS_KEY_PATH_PREFIX="pivotal/jwskey"
+ENV VAULT_SERVICE_ACCOUNT_TOKEN_PATH="/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+ENV FSPIOP_USE_MUTUAL_TLS="false"
+ENV FSPIOP_MTLS_CA_PATH=""
+ENV FSPIOP_MTLS_CLIENT_CERT_PATH=""
+ENV FSPIOP_MTLS_CLIENT_KEY_PATH=""
+ENV FSPIOP_MTLS_RELOAD_INTERVAL_MS="60000"
+
+ENTRYPOINT ["/opt/app/docker-entrypoint.sh"]
