@@ -40,4 +40,8 @@ exec java \
     "-DfspiopMtlsClientCertPath=${FSPIOP_MTLS_CLIENT_CERT_PATH:-}" \
     "-DfspiopMtlsClientKeyPath=${FSPIOP_MTLS_CLIENT_KEY_PATH:-}" \
     "-DfspiopMtlsReloadIntervalMs=${FSPIOP_MTLS_RELOAD_INTERVAL_MS:-60000}" \
+    "-DconnectorToTazamaKafkaEnabled=${CONNECTOR_TO_TAZAMA_KAFKA_ENABLED}" \
+    "-DconnectorToTazamaKafkaBootstrapServers=${CONNECTOR_TO_TAZAMA_KAFKA_BOOTSTRAP_SERVERS}" \
+    "-DconnectorToTazamaKafkaTopic=${CONNECTOR_TO_TAZAMA_KAFKA_TOPIC}" \
+    "-DconnectorToTazamaKafkaClientId=${CONNECTOR_TO_TAZAMA_KAFKA_CLIENT_ID}" \
     -jar app.jar
