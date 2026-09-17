@@ -17,6 +17,7 @@ package com.thitsaworks.mojaloop.coreconnector.services;
 
 import com.thitsaworks.mojaloop.coreconnector.payload.api.LookUpApi;
 import com.thitsaworks.mojaloop.coreconnector.payload.api.QuoteApi;
+import com.thitsaworks.mojaloop.coreconnector.payload.api.TransactionStatusApi;
 import com.thitsaworks.mojaloop.coreconnector.payload.api.TransferApi;
 import retrofit2.Call;
 import retrofit2.http.*;
@@ -31,4 +32,7 @@ public interface ThitsaWalletService {
 
     @POST("credit_amount")
     Call<TransferApi.Response> doTransfer(@Body TransferApi.Request request);
+
+    @GET("transaction_status")
+    Call<TransactionStatusApi.Response> getTransactionStatus(@Query("mojaloopTransferId") String mojaloopTransferId);
 }

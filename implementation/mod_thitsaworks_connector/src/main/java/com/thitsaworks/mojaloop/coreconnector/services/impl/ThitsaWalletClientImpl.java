@@ -38,20 +38,27 @@ import com.thitsaworks.mojaloop.coreconnector.fspiop.model.ExtensionList;
 import com.thitsaworks.mojaloop.coreconnector.fspiop.model.TransactionInitiatorType;
 import com.thitsaworks.mojaloop.coreconnector.payload.api.LookUpApi;
 import com.thitsaworks.mojaloop.coreconnector.payload.api.QuoteApi;
+import com.thitsaworks.mojaloop.coreconnector.payload.api.TransactionStatusApi;
 import com.thitsaworks.mojaloop.coreconnector.payload.api.TransferApi;
 import com.thitsaworks.mojaloop.coreconnector.payload.feeengine.CatalystFeeApi;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.ConfirmationForTransfer;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.DoQuote;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.LookUp;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.ReservationForTransfer;
+import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatus;
 import com.thitsaworks.mojaloop.coreconnector.services.FeeEngineService;
 import com.thitsaworks.mojaloop.coreconnector.services.FspClientService;
 import com.thitsaworks.mojaloop.coreconnector.services.ThitsaWalletService;
+import com.thitsaworks.mojaloop.coreconnector.services.dispute.CbsTransactionStatus;
+import com.thitsaworks.mojaloop.coreconnector.services.dispute.CbsTransactionStatusProvider;
+import com.thitsaworks.mojaloop.coreconnector.services.dispute.DisputeStatusManager;
 import okhttp3.logging.HttpLoggingInterceptor;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -67,7 +74,8 @@ import java.util.stream.Collectors;
 
 @Component
 @Qualifier("thitsaWalletClientImpl")
-public class ThitsaWalletClientImpl implements FspClientService {
+public class ThitsaWalletClientImpl
+    implements FspClientService, CbsTransactionStatusProvider, InitializingBean, DisposableBean {
 
     private static final Logger LOG = LoggerFactory.getLogger(ThitsaWalletClientImpl.class);
 
@@ -86,6 +94,8 @@ public class ThitsaWalletClientImpl implements FspClientService {
     private final FeeEngineErrorProcessor feeEngineErrorProcessor;
 
     private final Utility utility;
+
+    private final DisputeStatusManager disputeStatusManager;
 
     private static final String PERSON_TO_PERSON = "PERSON_TO_PERSON";
 
@@ -132,6 +142,19 @@ public class ThitsaWalletClientImpl implements FspClientService {
         this.thitsawalletErrorProcessor = thitsawalletErrorProcessor;
         this.feeEngineErrorProcessor = feeEngineErrorProcessor;
         this.utility = utility;
+        this.disputeStatusManager = new DisputeStatusManager(this);
+    }
+
+    @Override
+    public void afterPropertiesSet() {
+
+        this.disputeStatusManager.afterPropertiesSet();
+    }
+
+    @Override
+    public void destroy() {
+
+        this.disputeStatusManager.destroy();
     }
 
     @Override
@@ -412,6 +435,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
     public ConfirmationForTransfer.Response doConfirmationForTransfer(ConfirmationForTransfer.Request request) {
 
         ConfirmationForTransfer.Response response = new ConfirmationForTransfer.Response();
+        boolean creditRequestAttempted = false;
 
         try {
 
@@ -454,6 +478,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
                 "Credit Amount Request from payee connector to thitsawallet system for transferId {} : {}",
                 request.getTransferId(), this.objectMapper.writeValueAsString(transferRequest));
 
+            creditRequestAttempted = true;
             Response<TransferApi.Response> apiResponse = RetrofitRunner.invoke(
                 this.thitsaWalletService, transferRequest, (s, r) -> s.doTransfer(transferRequest),
                 this.errorDecoder);
@@ -470,6 +495,12 @@ public class ThitsaWalletClientImpl implements FspClientService {
             }
 
         } catch (Exception e) {
+
+            if (creditRequestAttempted) {
+                this.disputeStatusManager.markDispute(
+                    request.getTransferId(),
+                    request.getQuoteRequest().getBody().getExtensionList());
+            }
 
             try {
                 if (e instanceof RetrofitRunner.InvocationException) {
@@ -510,6 +541,68 @@ public class ThitsaWalletClientImpl implements FspClientService {
         }
 
         return response;
+    }
+
+    public TransactionStatus.Response getStatus(TransactionStatus.Request request) {
+
+        return this.disputeStatusManager.getStatus(request);
+    }
+
+    @Override
+    public CbsTransactionStatus getCbsTransactionStatus(String transferId, ExtensionList extensionList) {
+
+        TransactionStatusApi.Response statusResponse = this.getThitsaWalletTransactionStatus(transferId);
+
+        return new CbsTransactionStatus(
+            transferId,
+            statusResponse != null ? statusResponse.status() : null,
+            statusResponse != null ? statusResponse.transferStage() : null);
+    }
+
+    private TransactionStatusApi.Response getThitsaWalletTransactionStatus(String transferId) {
+
+        try {
+            LOG.info("Checking transaction status for transferId {}", transferId);
+
+            Response<TransactionStatusApi.Response> apiResponse = RetrofitRunner.invoke(
+                this.thitsaWalletService,
+                null,
+                (s, r) -> s.getTransactionStatus(transferId),
+                this.errorDecoder);
+
+            TransactionStatusApi.Response statusResponse = apiResponse.body();
+
+            LOG.info(
+                "Transaction status response for transferId {} : {}",
+                transferId,
+                this.objectMapper.writeValueAsString(statusResponse));
+
+            return statusResponse;
+
+        } catch (Exception e) {
+            try {
+                if (e instanceof RetrofitRunner.InvocationException) {
+                    Object errorResponse = ((RetrofitRunner.InvocationException) e).getErrorResponse();
+                    LOG.error(
+                        "Transaction status error response from payee connector for transferId {} : {}",
+                        transferId,
+                        this.objectMapper.writeValueAsString(
+                            errorResponse != null ? errorResponse : e.getMessage()));
+                } else {
+                    LOG.error(
+                        "Transaction status error response from payee connector for transferId {} : {}",
+                        transferId,
+                        e.getMessage());
+                }
+            } catch (JsonProcessingException ex) {
+                LOG.error(
+                    "Transaction status error response from payee connector for transferId {}",
+                    transferId,
+                    e);
+            }
+
+            return null;
+        }
     }
 
     private DoQuote.Response addFeeCalculationExtensions(DoQuote.Response response,
