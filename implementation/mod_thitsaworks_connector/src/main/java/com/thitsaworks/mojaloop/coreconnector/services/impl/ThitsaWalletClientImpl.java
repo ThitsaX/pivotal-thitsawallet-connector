@@ -49,7 +49,6 @@ import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatu
 import com.thitsaworks.mojaloop.coreconnector.services.FeeEngineService;
 import com.thitsaworks.mojaloop.coreconnector.services.FspClientService;
 import com.thitsaworks.mojaloop.coreconnector.services.ThitsaWalletService;
-import com.thitsaworks.mojaloop.coreconnector.services.dispute.CbsTransactionStatus;
 import com.thitsaworks.mojaloop.coreconnector.services.dispute.CbsTransactionStatusProvider;
 import com.thitsaworks.mojaloop.coreconnector.services.dispute.DisputeStatusManager;
 import okhttp3.logging.HttpLoggingInterceptor;
@@ -57,8 +56,6 @@ import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -75,7 +72,7 @@ import java.util.stream.Collectors;
 @Component
 @Qualifier("thitsaWalletClientImpl")
 public class ThitsaWalletClientImpl
-    implements FspClientService, CbsTransactionStatusProvider, InitializingBean, DisposableBean {
+    implements FspClientService, CbsTransactionStatusProvider{
 
     private static final Logger LOG = LoggerFactory.getLogger(ThitsaWalletClientImpl.class);
 
@@ -113,7 +110,8 @@ public class ThitsaWalletClientImpl
                                   ObjectMapper objectMapper,
                                   ThitsaWalletErrorProcessor thitsawalletErrorProcessor,
                                   FeeEngineErrorProcessor feeEngineErrorProcessor,
-                                  Utility utility) {
+                                  Utility utility,
+                                  DisputeStatusManager disputeStatusManager) {
 
         this.settings = settings;
         this.thitsaWalletService = new RetrofitServiceBuilder<>(
@@ -142,19 +140,7 @@ public class ThitsaWalletClientImpl
         this.thitsawalletErrorProcessor = thitsawalletErrorProcessor;
         this.feeEngineErrorProcessor = feeEngineErrorProcessor;
         this.utility = utility;
-        this.disputeStatusManager = new DisputeStatusManager(this);
-    }
-
-    @Override
-    public void afterPropertiesSet() {
-
-        this.disputeStatusManager.afterPropertiesSet();
-    }
-
-    @Override
-    public void destroy() {
-
-        this.disputeStatusManager.destroy();
+        this.disputeStatusManager = disputeStatusManager;
     }
 
     @Override
@@ -549,17 +535,7 @@ public class ThitsaWalletClientImpl
     }
 
     @Override
-    public CbsTransactionStatus getCbsTransactionStatus(String transferId, ExtensionList extensionList) {
-
-        TransactionStatusApi.Response statusResponse = this.getThitsaWalletTransactionStatus(transferId);
-
-        return new CbsTransactionStatus(
-            transferId,
-            statusResponse != null ? statusResponse.status() : null,
-            statusResponse != null ? statusResponse.transferStage() : null);
-    }
-
-    private TransactionStatusApi.Response getThitsaWalletTransactionStatus(String transferId) {
+    public Boolean getCbsTransactionStatus(String transferId, ExtensionList extensionList) {
 
         try {
             LOG.info("Checking transaction status for transferId {}", transferId);
@@ -577,7 +553,7 @@ public class ThitsaWalletClientImpl
                 transferId,
                 this.objectMapper.writeValueAsString(statusResponse));
 
-            return statusResponse;
+            return statusResponse != null && "SUCCESS".equalsIgnoreCase(statusResponse.status());
 
         } catch (Exception e) {
             try {
@@ -601,7 +577,7 @@ public class ThitsaWalletClientImpl
                     e);
             }
 
-            return null;
+            return false;
         }
     }
 

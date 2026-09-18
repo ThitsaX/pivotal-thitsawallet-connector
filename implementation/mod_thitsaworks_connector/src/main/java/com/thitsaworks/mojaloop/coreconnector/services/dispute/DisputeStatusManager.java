@@ -19,8 +19,10 @@ import com.thitsaworks.mojaloop.coreconnector.fspiop.model.ExtensionList;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.Map;
@@ -28,18 +30,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
+@Component
 public class DisputeStatusManager implements InitializingBean, DisposableBean {
 
     private static final Logger LOG = LoggerFactory.getLogger(DisputeStatusManager.class);
 
-    private static final String SUCCESS_STATUS = "SUCCESS";
+    private static final long STATUS_CHECK_INITIAL_DELAY_MINUTES = 1L;
 
-    private static final String COMPLETED_STAGE = "COMPLETED";
+    private static final long STATUS_CHECK_PERIOD_MINUTES = 1L;
 
-    private static final long CHECK_PERIOD_MINUTES = 1L;
-
-    private final CbsTransactionStatusProvider statusProvider;
+    private CbsTransactionStatusProvider statusProvider;
 
     private final Map<String, DisputedTransfer> disputedTransfers = new ConcurrentHashMap<>();
 
@@ -51,7 +51,10 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
         return thread;
     });
 
-    public DisputeStatusManager(CbsTransactionStatusProvider statusProvider) {
+    public DisputeStatusManager() { }
+
+    @Autowired
+    public void setStatusProvider(CbsTransactionStatusProvider statusProvider) {
 
         this.statusProvider = statusProvider;
     }
@@ -61,8 +64,8 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
 
         this.checker.scheduleAtFixedRate(
             this::checkDisputedTransfers,
-            CHECK_PERIOD_MINUTES,
-            CHECK_PERIOD_MINUTES,
+            STATUS_CHECK_INITIAL_DELAY_MINUTES,
+            STATUS_CHECK_PERIOD_MINUTES,
             TimeUnit.MINUTES);
     }
 
@@ -86,7 +89,7 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
             LOG.warn(
                 "Marked transferId {} as dispute. It will be checked every {} minute(s).",
                 transferId,
-                CHECK_PERIOD_MINUTES);
+                STATUS_CHECK_PERIOD_MINUTES);
         }
     }
 
@@ -96,9 +99,7 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
             return new TransactionStatus.Response(true);
         }
 
-        return this.disputeResults.getOrDefault(
-            request.transferId(),
-            new TransactionStatus.Response(true));
+        return this.disputeResults.get(request.transferId());
     }
 
     private void checkDisputedTransfers() {
@@ -131,10 +132,16 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
     private boolean resolveDispute(DisputedTransfer disputedTransfer) {
 
         try {
-            CbsTransactionStatus status = this.statusProvider.getCbsTransactionStatus(
+            Boolean cbsTransactionSuccessful = this.statusProvider.getCbsTransactionStatus(
                 disputedTransfer.transferId(),
                 disputedTransfer.extensionList());
-            return !this.isSuccessful(status);
+
+            if (!Boolean.TRUE.equals(cbsTransactionSuccessful)) {
+                return true;
+            }
+
+            return false;
+
         } catch (Exception e) {
             LOG.error(
                 "Transaction status check failed for transferId {}. Dispute remains true.",
@@ -142,13 +149,6 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
                 e);
             return true;
         }
-    }
-
-    private boolean isSuccessful(CbsTransactionStatus status) {
-
-        return status != null &&
-            (SUCCESS_STATUS.equalsIgnoreCase(status.status()) ||
-                COMPLETED_STAGE.equalsIgnoreCase(status.transferStage()));
     }
 
     private boolean isReadyForStatusCheck(DisputedTransfer disputedTransfer) {

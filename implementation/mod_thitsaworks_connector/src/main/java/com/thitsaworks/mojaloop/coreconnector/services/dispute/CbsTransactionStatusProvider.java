@@ -19,6 +19,6 @@ import com.thitsaworks.mojaloop.coreconnector.fspiop.model.ExtensionList;
 
 public interface CbsTransactionStatusProvider {
 
-    CbsTransactionStatus getCbsTransactionStatus(String transferId, ExtensionList extensionList)
+    Boolean getCbsTransactionStatus(String transferId, ExtensionList extensionList)
         throws Exception;
 }
