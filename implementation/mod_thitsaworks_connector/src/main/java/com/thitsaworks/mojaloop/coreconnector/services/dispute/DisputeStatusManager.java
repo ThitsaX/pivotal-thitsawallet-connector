@@ -17,7 +17,7 @@
 package com.thitsaworks.mojaloop.coreconnector.services.dispute;
 
 import com.thitsaworks.mojaloop.coreconnector.fspiop.model.ExtensionList;
-import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatus;
+import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.DisputedStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -43,11 +43,11 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
 
     private static final long STATUS_RETRY_DELAY_SECONDS = 10L;
 
-    private TransactionStatusProvider statusProvider;
+    private final TransactionStatusProvider statusProvider;
 
     private final Map<String, DisputedTransfer> disputedTransfers = new ConcurrentHashMap<>();
 
-    private final Map<String, TransactionStatus.Response> disputeResults = new ConcurrentHashMap<>();
+    private final Map<String, DisputedStatus.Response> disputeResults = new ConcurrentHashMap<>();
 
     private final ScheduledExecutorService checker = Executors.newSingleThreadScheduledExecutor(
         r -> {
@@ -56,13 +56,8 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
             return thread;
         });
 
-    public DisputeStatusManager() { }
-
     @Autowired
-    public void setStatusProvider(TransactionStatusProvider statusProvider) {
-
-        this.statusProvider = statusProvider;
-    }
+    public DisputeStatusManager(TransactionStatusProvider statusProvider) { this.statusProvider = statusProvider; }
 
     @Override
     public void afterPropertiesSet() {
@@ -89,16 +84,17 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
             new DisputedTransfer(transferId, extensionList, System.currentTimeMillis()));
 
         if (existing == null) {
-            LOG.warn(
+
+            LOG.info(
                 "Marked transferId {} as dispute. It will be checked every {} minute(s).",
                 transferId, STATUS_CHECK_PERIOD_MINUTES);
         }
     }
 
-    public TransactionStatus.Response getStatus(TransactionStatus.Request request) {
+    public DisputedStatus.Response getStatus(DisputedStatus.Request request) {
 
         if (request == null || !StringUtils.hasLength(request.transferId())) {
-            return new TransactionStatus.Response(true);
+            return new DisputedStatus.Response(true);
         }
 
         return this.disputeResults.get(request.transferId());
@@ -119,23 +115,30 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
             disputedTransfer);
 
         if (this.isRetryableStatus(cbsTransactionStatus)) {
+
             LOG.info(
                 "Transaction status is {} for transferId {}. Retrying after {} second(s).",
                 cbsTransactionStatus, disputedTransfer.transferId(), STATUS_RETRY_DELAY_SECONDS);
+
             cbsTransactionStatus = this.retryDisputeStatus(disputedTransfer);
         }
 
         this.disputedTransfers.remove(disputedTransfer.transferId());
+
         boolean dispute = !TransactionStatusProvider.TransactionStatus.SUCCESS.equals(
             cbsTransactionStatus);
+
         this.disputeResults.put(
-            disputedTransfer.transferId(), new TransactionStatus.Response(dispute));
+            disputedTransfer.transferId(), new DisputedStatus.Response(dispute));
 
         if (dispute) {
+
             LOG.info(
                 "Confirmed dispute for transferId {} because transaction status is not successful.",
                 disputedTransfer.transferId());
+
         } else {
+
             LOG.info(
                 "Resolved dispute for transferId {} because transaction status is successful.",
                 disputedTransfer.transferId());
@@ -150,9 +153,11 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
                 disputedTransfer.extensionList());
 
         } catch (Exception e) {
+
             LOG.error(
                 "Transaction status check failed for transferId {}. Dispute remains true.",
                 disputedTransfer.transferId(), e);
+
             return TransactionStatusProvider.TransactionStatus.FAILED;
         }
     }
@@ -173,10 +178,13 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
         try {
             TimeUnit.SECONDS.sleep(STATUS_RETRY_DELAY_SECONDS);
         } catch (InterruptedException e) {
+
             Thread.currentThread().interrupt();
+
             LOG.error(
                 "Transaction status retry interrupted for transferId {}. Dispute remains true.",
                 disputedTransfer.transferId(), e);
+
             return TransactionStatusProvider.TransactionStatus.FAILED;
         }
 

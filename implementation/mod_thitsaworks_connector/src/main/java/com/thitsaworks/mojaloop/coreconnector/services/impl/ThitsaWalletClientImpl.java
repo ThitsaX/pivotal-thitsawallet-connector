@@ -42,6 +42,7 @@ import com.thitsaworks.mojaloop.coreconnector.payload.api.TransactionStatusApi;
 import com.thitsaworks.mojaloop.coreconnector.payload.api.TransferApi;
 import com.thitsaworks.mojaloop.coreconnector.payload.feeengine.CatalystFeeApi;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.ConfirmationForTransfer;
+import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.DisputedStatus;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.DoQuote;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.LookUp;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.ReservationForTransfer;
@@ -528,21 +529,42 @@ public class ThitsaWalletClientImpl implements FspClientService, TransactionStat
         return response;
     }
 
-    public com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatus.Response getStatus(
-        com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatus.Request request) {
+    public DisputedStatus.Response getStatus(
+        DisputedStatus.Request request) {
 
-        return this.disputeStatusManager.getStatus(request);
+        try {
+            LOG.info(
+                "Getting dispute status with request: {}",
+                this.objectMapper.writeValueAsString(request));
+
+            DisputedStatus.Response response = this.disputeStatusManager.getStatus(request);
+
+            LOG.info(
+                "Dispute status response for transferId {} : {}",
+                request != null ? request.transferId() : null,
+                this.objectMapper.writeValueAsString(response));
+
+            return response;
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public TransactionStatus getTransactionStatus(String transferId, ExtensionList extensionList) {
 
         try {
-            LOG.info("Checking transaction status for transferId {}", transferId);
+            LOG.info(
+                "Checking transaction status for transferId {}, extensionList {}",
+                transferId, this.objectMapper.writeValueAsString(extensionList));
 
             Response<TransactionStatusApi.Response> apiResponse = RetrofitRunner.invoke(
                 this.thitsaWalletService, null, (s, r) -> s.getTransactionStatus(transferId),
                 this.errorDecoder);
+
+            LOG.info(
+                "Transaction status API response metadata for transferId {} : code {}, successful {}",
+                transferId, apiResponse.code(), apiResponse.isSuccessful());
 
             TransactionStatusApi.Response statusResponse = apiResponse.body();
 
@@ -550,45 +572,72 @@ public class ThitsaWalletClientImpl implements FspClientService, TransactionStat
                 "Transaction status response for transferId {} : {}", transferId,
                 this.objectMapper.writeValueAsString(statusResponse));
 
-            return this.resolveCbsTransactionStatus(statusResponse);
+            TransactionStatus transactionStatus = this.resolveCbsTransactionStatus(statusResponse);
+
+            LOG.info(
+                "Resolved transaction status for transferId {} as {}", transferId,
+                transactionStatus);
+
+            return transactionStatus;
 
         } catch (Exception e) {
-            try {
-                if (e instanceof RetrofitRunner.InvocationException) {
-                    Object errorResponse = ((RetrofitRunner.InvocationException) e).getErrorResponse();
+
+            if (e instanceof RetrofitRunner.InvocationException) {
+                Object errorResponse = ((RetrofitRunner.InvocationException) e).getErrorResponse();
+                try {
                     LOG.error(
                         "Transaction status error response from payee connector for transferId {} : {}",
                         transferId, this.objectMapper.writeValueAsString(
                             errorResponse != null ? errorResponse : e.getMessage()));
-
-                } else {
-                    LOG.error(
-                        "Transaction status error response from payee connector for transferId {} : {}",
-                        transferId, e.getMessage());
+                } catch (JsonProcessingException ex) {
+                    throw new RuntimeException(ex);
                 }
-            } catch (JsonProcessingException ex) {
+
+            } else {
                 LOG.error(
-                    "Transaction status error response from payee connector for transferId {}",
-                    transferId, e);
+                    "Transaction status error response from payee connector for transferId {} : {}",
+                    transferId, e.getMessage());
             }
 
             return TransactionStatus.FAILED;
         }
     }
 
-    private TransactionStatus resolveCbsTransactionStatus(TransactionStatusApi.Response statusResponse) {
+    private TransactionStatus resolveCbsTransactionStatus(TransactionStatusApi.Response statusResponse)
+        throws JsonProcessingException {
 
         if (statusResponse == null || !StringUtils.hasLength(statusResponse.status())) {
+
+            LOG.info(
+                "transaction status response is missing status. Response: {}. Returning {}",
+                this.objectMapper.writeValueAsString(statusResponse), TransactionStatus.FAILED);
+
             return TransactionStatus.FAILED;
         }
 
+        String cbsStatus = statusResponse.status();
+
         if ("SUCCESS".equalsIgnoreCase(statusResponse.status())) {
+
+            LOG.info(
+                "DFSP transaction status {} mapped to {}", cbsStatus,
+                TransactionStatus.SUCCESS);
+
             return TransactionStatus.SUCCESS;
         }
 
         if ("PENDING".equalsIgnoreCase(statusResponse.status())) {
+
+            LOG.info(
+                "Payee transaction status {} mapped to {}", cbsStatus,
+                TransactionStatus.PENDING);
+
             return TransactionStatus.PENDING;
         }
+
+        LOG.info(
+            "Payee transaction status {} is not recognized as success or pending. Returning {}",
+            cbsStatus, TransactionStatus.FAILED);
 
         return TransactionStatus.FAILED;
     }

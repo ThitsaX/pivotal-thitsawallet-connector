@@ -20,8 +20,7 @@ import com.thitsaworks.mojaloop.coreconnector.fspiop.model.ExtensionList;
 
 public interface TransactionStatusProvider {
 
-    TransactionStatus getTransactionStatus(String transferId, ExtensionList extensionList)
-        throws Exception;
+    TransactionStatus getTransactionStatus(String transferId, ExtensionList extensionList);
 
     enum TransactionStatus {
         SUCCESS,
