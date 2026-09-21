@@ -13,12 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.thitsaworks.mojaloop.coreconnector.services.dispute;
 
 import com.thitsaworks.mojaloop.coreconnector.fspiop.model.ExtensionList;
 
-public interface CbsTransactionStatusProvider {
+public interface TransactionStatusProvider {
 
-    Boolean getCbsTransactionStatus(String transferId, ExtensionList extensionList)
+    TransactionStatus getTransactionStatus(String transferId, ExtensionList extensionList)
         throws Exception;
+
+    enum TransactionStatus {
+        SUCCESS,
+        PENDING,
+        FAILED
+    }
+
 }

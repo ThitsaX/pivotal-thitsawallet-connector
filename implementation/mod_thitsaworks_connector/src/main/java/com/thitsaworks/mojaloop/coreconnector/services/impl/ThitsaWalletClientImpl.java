@@ -45,12 +45,11 @@ import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.ConfirmationForT
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.DoQuote;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.LookUp;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.ReservationForTransfer;
-import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatus;
 import com.thitsaworks.mojaloop.coreconnector.services.FeeEngineService;
 import com.thitsaworks.mojaloop.coreconnector.services.FspClientService;
 import com.thitsaworks.mojaloop.coreconnector.services.ThitsaWalletService;
-import com.thitsaworks.mojaloop.coreconnector.services.dispute.CbsTransactionStatusProvider;
 import com.thitsaworks.mojaloop.coreconnector.services.dispute.DisputeStatusManager;
+import com.thitsaworks.mojaloop.coreconnector.services.dispute.TransactionStatusProvider;
 import okhttp3.logging.HttpLoggingInterceptor;
 import org.json.JSONException;
 import org.slf4j.Logger;
@@ -71,8 +70,7 @@ import java.util.stream.Collectors;
 
 @Component
 @Qualifier("thitsaWalletClientImpl")
-public class ThitsaWalletClientImpl
-    implements FspClientService, CbsTransactionStatusProvider{
+public class ThitsaWalletClientImpl implements FspClientService, TransactionStatusProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(ThitsaWalletClientImpl.class);
 
@@ -262,7 +260,8 @@ public class ThitsaWalletClientImpl
             BigDecimal feeAmount = new BigDecimal(0);
             CatalystFeeApi.Response catalystFeeResponse = new CatalystFeeApi.Response(null);
 
-            if (this.settings.getIsCalculateFee() && ("PERSON_TO_PERSON".equals(request.getSubScenario()))) {
+            if (this.settings.getIsCalculateFee() &&
+                    ("PERSON_TO_PERSON".equals(request.getSubScenario()))) {
 
                 BigDecimal amount = new BigDecimal(request.getAmount());
 
@@ -529,31 +528,29 @@ public class ThitsaWalletClientImpl
         return response;
     }
 
-    public TransactionStatus.Response getStatus(TransactionStatus.Request request) {
+    public com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatus.Response getStatus(
+        com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatus.Request request) {
 
         return this.disputeStatusManager.getStatus(request);
     }
 
     @Override
-    public Boolean getCbsTransactionStatus(String transferId, ExtensionList extensionList) {
+    public TransactionStatus getTransactionStatus(String transferId, ExtensionList extensionList) {
 
         try {
             LOG.info("Checking transaction status for transferId {}", transferId);
 
             Response<TransactionStatusApi.Response> apiResponse = RetrofitRunner.invoke(
-                this.thitsaWalletService,
-                null,
-                (s, r) -> s.getTransactionStatus(transferId),
+                this.thitsaWalletService, null, (s, r) -> s.getTransactionStatus(transferId),
                 this.errorDecoder);
 
             TransactionStatusApi.Response statusResponse = apiResponse.body();
 
             LOG.info(
-                "Transaction status response for transferId {} : {}",
-                transferId,
+                "Transaction status response for transferId {} : {}", transferId,
                 this.objectMapper.writeValueAsString(statusResponse));
 
-            return statusResponse != null && "SUCCESS".equalsIgnoreCase(statusResponse.status());
+            return this.resolveCbsTransactionStatus(statusResponse);
 
         } catch (Exception e) {
             try {
@@ -561,24 +558,39 @@ public class ThitsaWalletClientImpl
                     Object errorResponse = ((RetrofitRunner.InvocationException) e).getErrorResponse();
                     LOG.error(
                         "Transaction status error response from payee connector for transferId {} : {}",
-                        transferId,
-                        this.objectMapper.writeValueAsString(
+                        transferId, this.objectMapper.writeValueAsString(
                             errorResponse != null ? errorResponse : e.getMessage()));
+
                 } else {
                     LOG.error(
                         "Transaction status error response from payee connector for transferId {} : {}",
-                        transferId,
-                        e.getMessage());
+                        transferId, e.getMessage());
                 }
             } catch (JsonProcessingException ex) {
                 LOG.error(
                     "Transaction status error response from payee connector for transferId {}",
-                    transferId,
-                    e);
+                    transferId, e);
             }
 
-            return false;
+            return TransactionStatus.FAILED;
         }
+    }
+
+    private TransactionStatus resolveCbsTransactionStatus(TransactionStatusApi.Response statusResponse) {
+
+        if (statusResponse == null || !StringUtils.hasLength(statusResponse.status())) {
+            return TransactionStatus.FAILED;
+        }
+
+        if ("SUCCESS".equalsIgnoreCase(statusResponse.status())) {
+            return TransactionStatus.SUCCESS;
+        }
+
+        if ("PENDING".equalsIgnoreCase(statusResponse.status())) {
+            return TransactionStatus.PENDING;
+        }
+
+        return TransactionStatus.FAILED;
     }
 
     private DoQuote.Response addFeeCalculationExtensions(DoQuote.Response response,

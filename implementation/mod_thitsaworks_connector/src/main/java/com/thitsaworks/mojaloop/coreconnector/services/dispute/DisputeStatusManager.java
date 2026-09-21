@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.thitsaworks.mojaloop.coreconnector.services.dispute;
 
 import com.thitsaworks.mojaloop.coreconnector.fspiop.model.ExtensionList;
 import com.thitsaworks.mojaloop.coreconnector.payload.fspclient.TransactionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -30,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 @Component
 public class DisputeStatusManager implements InitializingBean, DisposableBean {
 
@@ -39,22 +41,25 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
 
     private static final long STATUS_CHECK_PERIOD_MINUTES = 1L;
 
-    private CbsTransactionStatusProvider statusProvider;
+    private static final long STATUS_RETRY_DELAY_SECONDS = 10L;
+
+    private TransactionStatusProvider statusProvider;
 
     private final Map<String, DisputedTransfer> disputedTransfers = new ConcurrentHashMap<>();
 
     private final Map<String, TransactionStatus.Response> disputeResults = new ConcurrentHashMap<>();
 
-    private final ScheduledExecutorService checker = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread thread = new Thread(r, "dispute-status-checker");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private final ScheduledExecutorService checker = Executors.newSingleThreadScheduledExecutor(
+        r -> {
+            Thread thread = new Thread(r, "dispute-status-checker");
+            thread.setDaemon(true);
+            return thread;
+        });
 
     public DisputeStatusManager() { }
 
     @Autowired
-    public void setStatusProvider(CbsTransactionStatusProvider statusProvider) {
+    public void setStatusProvider(TransactionStatusProvider statusProvider) {
 
         this.statusProvider = statusProvider;
     }
@@ -63,10 +68,8 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
     public void afterPropertiesSet() {
 
         this.checker.scheduleAtFixedRate(
-            this::checkDisputedTransfers,
-            STATUS_CHECK_INITIAL_DELAY_MINUTES,
-            STATUS_CHECK_PERIOD_MINUTES,
-            TimeUnit.MINUTES);
+            this::checkDisputedTransfers, STATUS_CHECK_INITIAL_DELAY_MINUTES,
+            STATUS_CHECK_PERIOD_MINUTES, TimeUnit.MINUTES);
     }
 
     @Override
@@ -88,8 +91,7 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
         if (existing == null) {
             LOG.warn(
                 "Marked transferId {} as dispute. It will be checked every {} minute(s).",
-                transferId,
-                STATUS_CHECK_PERIOD_MINUTES);
+                transferId, STATUS_CHECK_PERIOD_MINUTES);
         }
     }
 
@@ -113,10 +115,21 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
 
     private void checkDisputedTransfer(DisputedTransfer disputedTransfer) {
 
-        boolean dispute = this.resolveDispute(disputedTransfer);
+        TransactionStatusProvider.TransactionStatus cbsTransactionStatus = this.resolveDispute(
+            disputedTransfer);
+
+        if (this.isRetryableStatus(cbsTransactionStatus)) {
+            LOG.info(
+                "Transaction status is {} for transferId {}. Retrying after {} second(s).",
+                cbsTransactionStatus, disputedTransfer.transferId(), STATUS_RETRY_DELAY_SECONDS);
+            cbsTransactionStatus = this.retryDisputeStatus(disputedTransfer);
+        }
 
         this.disputedTransfers.remove(disputedTransfer.transferId());
-        this.disputeResults.put(disputedTransfer.transferId(), new TransactionStatus.Response(dispute));
+        boolean dispute = !TransactionStatusProvider.TransactionStatus.SUCCESS.equals(
+            cbsTransactionStatus);
+        this.disputeResults.put(
+            disputedTransfer.transferId(), new TransactionStatus.Response(dispute));
 
         if (dispute) {
             LOG.info(
@@ -129,34 +142,49 @@ public class DisputeStatusManager implements InitializingBean, DisposableBean {
         }
     }
 
-    private boolean resolveDispute(DisputedTransfer disputedTransfer) {
+    private TransactionStatusProvider.TransactionStatus resolveDispute(DisputedTransfer disputedTransfer) {
 
         try {
-            Boolean cbsTransactionSuccessful = this.statusProvider.getCbsTransactionStatus(
+            return this.statusProvider.getTransactionStatus(
                 disputedTransfer.transferId(),
                 disputedTransfer.extensionList());
-
-            if (!Boolean.TRUE.equals(cbsTransactionSuccessful)) {
-                return true;
-            }
-
-            return false;
 
         } catch (Exception e) {
             LOG.error(
                 "Transaction status check failed for transferId {}. Dispute remains true.",
-                disputedTransfer.transferId(),
-                e);
-            return true;
+                disputedTransfer.transferId(), e);
+            return TransactionStatusProvider.TransactionStatus.FAILED;
         }
     }
 
     private boolean isReadyForStatusCheck(DisputedTransfer disputedTransfer) {
 
-        return System.currentTimeMillis() - disputedTransfer.markedAt() >= TimeUnit.MINUTES.toMillis(1);
+        return System.currentTimeMillis() - disputedTransfer.markedAt() >=
+                   TimeUnit.MINUTES.toMillis(1);
+    }
+
+    private boolean isRetryableStatus(TransactionStatusProvider.TransactionStatus status) {
+
+        return TransactionStatusProvider.TransactionStatus.PENDING.equals(status);
+    }
+
+    private TransactionStatusProvider.TransactionStatus retryDisputeStatus(DisputedTransfer disputedTransfer) {
+
+        try {
+            TimeUnit.SECONDS.sleep(STATUS_RETRY_DELAY_SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error(
+                "Transaction status retry interrupted for transferId {}. Dispute remains true.",
+                disputedTransfer.transferId(), e);
+            return TransactionStatusProvider.TransactionStatus.FAILED;
+        }
+
+        return this.resolveDispute(disputedTransfer);
     }
 
     private record DisputedTransfer(String transferId,
                                     ExtensionList extensionList,
                                     long markedAt) { }
+
 }
