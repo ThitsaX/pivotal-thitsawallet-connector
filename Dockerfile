@@ -30,8 +30,38 @@ RUN --mount=type=secret,id=github_token \
       -pl implementation/mod_thitsaworks_connector \
       -am clean package -DskipTests
 
-FROM eclipse-temurin:21-jdk-alpine
+# Debian rather than Alpine because this connector can sign through a device.
+#
+# The vendor's client library is a C shared object built against glibc. Alpine is musl, so it fails
+# at relocation time with a missing glibc symbol rather than anything naming the cause -- and
+# installing the package never executes it, so the mismatch stays invisible until the provider is
+# first constructed.
+FROM eclipse-temurin:21-jdk-jammy
 WORKDIR /opt/app
+
+# Whether to carry the CloudHSM JCE provider.
+#
+#   none      keyProvider=vault-kv -- the key is a PEM read from Vault, no device involved
+#   cloudhsm  keyProvider=pkcs11 -- signing happens inside the device
+#
+# The JCE provider rather than the PKCS#11 one: the JDK's PKCS#11 keystore surfaces a private key
+# only where a certificate on the token is paired with it, and this device stores keys but not
+# certificates. AWS ships this provider for that reason.
+#
+# The Jammy build, matching this image's glibc. Each package is built against its own
+# distribution's, and a mismatch is not reported at install time.
+ARG PKCS11_BACKEND=none
+ARG CLOUDHSM_SDK_URL=https://s3.amazonaws.com/cloudhsmv2-software/CloudHsmClient/Jammy/cloudhsm-jce_latest_u22.04_amd64.deb
+RUN set -eu; \
+    if [ "$PKCS11_BACKEND" = "cloudhsm" ]; then \
+      apt-get update \
+   && apt-get install -y --no-install-recommends wget ca-certificates \
+   && wget -q -O /tmp/cloudhsm-jce.deb "$CLOUDHSM_SDK_URL" \
+   && apt-get install -y --no-install-recommends /tmp/cloudhsm-jce.deb \
+   && rm -f /tmp/cloudhsm-jce.deb \
+   && apt-get purge -y wget && apt-get autoremove -y \
+   && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 COPY --from=build /opt/app/implementation/mod_thitsaworks_connector/target/app.jar /opt/app/app.jar
 COPY docker-entrypoint.sh /opt/app/

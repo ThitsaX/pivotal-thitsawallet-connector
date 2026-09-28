@@ -1,6 +1,24 @@
 #!/bin/sh
 set -eu
 
+# How the JVM is started. Unchanged unless this deployment signs through a device: `java -jar`
+# ignores -cp, and the vendor's provider arrives as a separate jar in the image rather than inside
+# app.jar -- so reaching it means launching Spring Boot's loader by name instead. The plain form is
+# kept for every other deployment, so a profile that needs none of this cannot be broken by it.
+LAUNCH="-jar app.jar"
+
+if [ -n "${CLOUDHSM_IP:-}" ]; then
+
+    # The provider reads its cluster address from its own configuration file, which ships with a
+    # placeholder. Writing it here rather than baking it in because the address differs per
+    # environment, and generating it with the vendor's tool because the file's format is theirs.
+    /opt/cloudhsm/bin/configure-jce -a "$CLOUDHSM_IP"
+
+    LAUNCH="-cp /opt/app/app.jar:/opt/cloudhsm/java/* org.springframework.boot.loader.launch.JarLauncher"
+
+    echo "CloudHSM client configured for $CLOUDHSM_IP."
+fi
+
 
 # FSPIOP JWS and mutual TLS (hub-facing leg). Both are off unless explicitly enabled, and every
 # variable carries a default, so a deployment that sets none of them behaves as before.
@@ -44,4 +62,7 @@ exec java \
     "-DconnectorToTazamaKafkaBootstrapServers=${CONNECTOR_TO_TAZAMA_KAFKA_BOOTSTRAP_SERVERS}" \
     "-DconnectorToTazamaKafkaTopic=${CONNECTOR_TO_TAZAMA_KAFKA_TOPIC}" \
     "-DconnectorToTazamaKafkaClientId=${CONNECTOR_TO_TAZAMA_KAFKA_CLIENT_ID}" \
-    -jar app.jar
+    "-DkeyProvider=${KEY_PROVIDER:-vault-kv}" \
+    "-DhsmCredPath=${HSM_CRED_PATH:-}" \
+    "-DkeyRefPathPrefix=${KEY_REF_PATH:-pivotal/keyref}" \
+    $LAUNCH
