@@ -72,6 +72,7 @@ jobs:
           labels: ${{ steps.docker_meta.outputs.labels }}
           build-args: |
             GITHUB_ACTOR=pyaesoneaung-thitsaworks
+            PKCS11_BACKEND=cloudhsm
           secret-envs: |
             github_token=GH_PACKAGES_TOKEN
 
