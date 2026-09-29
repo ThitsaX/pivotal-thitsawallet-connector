@@ -12,7 +12,16 @@ if [ -n "${CLOUDHSM_IP:-}" ]; then
     # The provider reads its cluster address from its own configuration file, which ships with a
     # placeholder. Writing it here rather than baking it in because the address differs per
     # environment, and generating it with the vendor's tool because the file's format is theirs.
-    /opt/cloudhsm/bin/configure-jce -a "$CLOUDHSM_IP"
+    # The provider refuses to use a key that does not exist on at least two HSMs -- despite the
+    # name, that covers signing, not just key creation. A cluster's HSM count cannot be inferred
+    # here, so it is configuration; off by default, so a deployment only loses the check by
+    # asking. Same variable as the TypeScript services, which pass it to configure-pkcs11.
+    if [ "${CLOUDHSM_DISABLE_KEY_AVAILABILITY_CHECK:-false}" = "true" ]; then
+        /opt/cloudhsm/bin/configure-jce -a "$CLOUDHSM_IP" --disable-key-availability-check
+        echo "WARNING: key availability check disabled -- keys may exist on a single HSM." >&2
+    else
+        /opt/cloudhsm/bin/configure-jce -a "$CLOUDHSM_IP"
+    fi
 
     LAUNCH="-cp /opt/app/app.jar:/opt/cloudhsm/java/* org.springframework.boot.loader.launch.JarLauncher"
 
