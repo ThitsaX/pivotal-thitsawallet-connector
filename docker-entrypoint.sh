@@ -33,6 +33,8 @@ fi
 # variable carries a default, so a deployment that sets none of them behaves as before.
 # Key material is never passed here: the signing key comes from Vault, and the client certificate
 # is read from a mounted Secret so a renewal reaches the connector without a new image.
+# Nor is the Hub token's client secret: arguments here are visible to any process in the container,
+# so the connector reads FSPIOP_OAUTH_CLIENT_SECRET from the environment itself.
 exec java \
     "-DconnectorId=${CONNECTOR_ID}" \
     "-DsupportedCurrencies=${SUPPORTED_CURRENCIES}" \
@@ -67,6 +69,8 @@ exec java \
     "-DfspiopMtlsClientCertPath=${FSPIOP_MTLS_CLIENT_CERT_PATH:-}" \
     "-DfspiopMtlsClientKeyPath=${FSPIOP_MTLS_CLIENT_KEY_PATH:-}" \
     "-DfspiopMtlsReloadIntervalMs=${FSPIOP_MTLS_RELOAD_INTERVAL_MS:-60000}" \
+    "-DfspiopOauthTokenUrl=${FSPIOP_OAUTH_TOKEN_URL:-}" \
+    "-DfspiopOauthClientId=${FSPIOP_OAUTH_CLIENT_ID:-}" \
     "-DconnectorToTazamaKafkaEnabled=${CONNECTOR_TO_TAZAMA_KAFKA_ENABLED}" \
     "-DconnectorToTazamaKafkaBootstrapServers=${CONNECTOR_TO_TAZAMA_KAFKA_BOOTSTRAP_SERVERS}" \
     "-DconnectorToTazamaKafkaTopic=${CONNECTOR_TO_TAZAMA_KAFKA_TOPIC}" \
