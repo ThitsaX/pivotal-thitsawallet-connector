@@ -120,6 +120,8 @@ Common defaults:
 | `natsUrl` | `NATS_URL` | `nats://example.com:4222` | NATS connection URL |
 | `fspiopStreamName` | `FSPIOP_STREAM_NAME` | `PIVOTAL_FSPIOP` | JetStream stream for FSPIOP messages |
 | `pivotalAuditStreamName` | `PIVOTAL_AUDIT_STREAM_NAME` | `PIVOTAL_AUDIT` | JetStream stream for audit events |
+| `disputeSchedulerEnabled` | `DISPUTE_SCHEDULER_ENABLED` | `false` | Enables scheduled dispute status checking |
+| `disputeSchedulerIntervalMinutes` | `DISPUTE_SCHEDULER_INTERVAL_MINUTES` | `1` | Dispute status scheduler interval in minutes |
 | `connectorForcePatchError` | `CONNECTOR_FORCE_PATCH_ERROR` | `false` | Forces patch error handling for testing |
 | `fspiopPartiesUrl` | `FSPIOP_PARTIES_URL` | `http://example.com:4002` | Hub callback base URL for parties |
 | `fspiopQuotesUrl` | `FSPIOP_QUOTES_URL` | `http://example.com:3002` | Hub callback base URL for quotes |

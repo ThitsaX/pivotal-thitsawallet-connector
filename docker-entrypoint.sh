@@ -9,6 +9,8 @@ exec java \
     "-DnatsUrl=${NATS_URL}" \
     "-DfspiopStreamName=${FSPIOP_STREAM_NAME}" \
     "-DpivotalAuditStreamName=${PIVOTAL_AUDIT_STREAM_NAME}" \
+    "-DdisputeSchedulerEnabled=${DISPUTE_SCHEDULER_ENABLED}" \
+    "-DdisputeSchedulerIntervalMinutes=${DISPUTE_SCHEDULER_INTERVAL_MINUTES}" \
     "-DconnectorForcePatchError=${CONNECTOR_FORCE_PATCH_ERROR}" \
     "-DoutboundEndpoint=${OUTBOUND_ENDPOINT}" \
     "-DfspiopPartiesUrl=${FSPIOP_PARTIES_URL}" \
