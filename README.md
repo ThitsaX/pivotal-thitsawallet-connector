@@ -134,6 +134,30 @@ Common defaults:
 | `sdkConnectorPortNo` | `SDK_CONNECTOR_PORT_NO` | `8080` | HTTP port used by the Spring Boot app |
 | `transactionAmountLimit` | `TRANSACTION_AMOUNT_LIMIT` | `0` | Threshold for transaction scenario logic |
 | `outboundEndpoint` | `OUTBOUND_ENDPOINT` | `http://example.com:4001` | FSPIOP callback base URL used by the connector |
+| `isCalculateFee` | `IS_CALCULATE_FEE` | `true` | Calculate fees via the fee engine |
+| `fspiopUseJws` | `FSPIOP_USE_JWS` | `false` | Sign outbound FSPIOP callbacks with a detached JWS |
+| `vaultUrl` | `VAULT_URL` | *(empty)* | Vault base URL. Required when `fspiopUseJws` is true |
+| `vaultRole` | `VAULT_ROLE` | *(empty)* | Vault Kubernetes auth role bound to this connector's ServiceAccount. Required when `fspiopUseJws` is true |
+| `vaultKubernetesAuthPath` | `VAULT_KUBERNETES_AUTH_PATH` | `kubernetes` | Mount path of the Vault Kubernetes auth method |
+| `vaultKvMount` | `VAULT_KV_MOUNT` | `secret` | KV v2 mount holding the signing key |
+| `vaultJwsKeyPathPrefix` | `VAULT_JWS_KEY_PATH_PREFIX` | `pivotal/jwskey` | Path prefix; the key is read from `<prefix>/<connectorId>` |
+| `vaultServiceAccountTokenPath` | `VAULT_SERVICE_ACCOUNT_TOKEN_PATH` | `/var/run/secrets/kubernetes.io/serviceaccount/token` | Where the kubelet projects the pod's ServiceAccount token |
+
+### FSPIOP JWS signing
+
+Signing is **off by default** and is enabled per deployment. It can be switched on unilaterally:
+peers ignore signatures until they enable verification, so there is no coordinated cutover on this
+side.
+
+**No key material is configured here.** The connector authenticates to Vault with its Kubernetes
+ServiceAccount and reads its own tenant's key from `<vaultKvMount>/<vaultJwsKeyPathPrefix>/<connectorId>`,
+field `privateKey`. Grant the Vault policy exactly that one path — a connector signs as one DFSP and
+should be able to reach nothing else. The key is read once at startup and cached, so Vault can be
+down and payments continue.
+
+Setting `fspiopUseJws=true` without `vaultUrl` and `vaultRole` **fails at startup** rather than
+falling back to unsigned: a connector that believes it is signing but is not is the failure this
+exists to prevent.
 
 ## Message Flow
 
