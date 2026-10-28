@@ -75,7 +75,7 @@ exec java \
     "-DconnectorToTazamaKafkaBootstrapServers=${CONNECTOR_TO_TAZAMA_KAFKA_BOOTSTRAP_SERVERS}" \
     "-DconnectorToTazamaKafkaTopic=${CONNECTOR_TO_TAZAMA_KAFKA_TOPIC}" \
     "-DconnectorToTazamaKafkaClientId=${CONNECTOR_TO_TAZAMA_KAFKA_CLIENT_ID}" \
-    "-DkeyProvider=${KEY_PROVIDER:-vault-kv}" \
-    "-DhsmCredPath=${HSM_CRED_PATH:-}" \
-    "-DkeyRefPathPrefix=${KEY_REF_PATH:-pivotal/keyref}" \
+    "-DkeyProvider=${KEY_PROVIDER}" \
+    "-DhsmCredPath=${HSM_CRED_PATH}" \
+    "-DkeyRefPathPrefix=${KEY_REF_PATH}" \
     $LAUNCH
