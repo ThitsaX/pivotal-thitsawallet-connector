@@ -91,7 +91,7 @@ ENV SDK_CONNECTOR_PORT_NO=8080
 ENV OUTBOUND_ENDPOINT="http://example.com:4001"
 ENV TRANSACTION_AMOUNT_LIMIT=0
 ENV IS_CALCULATE_FEE=true
-ENV IS_MOCK_ENABLED=true
+ENV IS_MOCK_ENABLED=false
 
 # FSPIOP JWS (hub-facing leg). Signing is off by default and is enabled per
 # deployment; key material never appears here — it is read from Vault.

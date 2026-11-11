@@ -85,7 +85,7 @@ public class PivotalConfiguration extends CoreConnectorConfiguration {
             this.transactionAmountLimit = propBigDecimal("transactionAmountLimit", BigDecimal.ZERO);
             this.sdkConnectorPortNo = propInt("sdkConnectorPortNo", 8080);
             this.isCalculateFee = propBoolean("isCalculateFee", true);
-            this.isMockEnabled = propBoolean("isMockEnabled", true);
+            this.isMockEnabled = propBoolean("isMockEnabled", false);
         }
 
         private static BigDecimal propBigDecimal(String key, BigDecimal def) {
