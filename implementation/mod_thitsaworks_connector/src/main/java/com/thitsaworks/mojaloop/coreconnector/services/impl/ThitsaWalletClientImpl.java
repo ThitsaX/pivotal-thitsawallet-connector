@@ -292,9 +292,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
                 response.setSupportedCurrencies(supportedCurrenciesList);
 
-
             } else {
-
 
                 if (request == null || !StringUtils.hasLength(request.getQuotedId()) ||
                     !StringUtils.hasLength(request.getTransactionId()) ||
