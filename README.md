@@ -142,6 +142,7 @@ Common defaults:
 | `vaultKvMount` | `VAULT_KV_MOUNT` | `secret` | KV v2 mount holding the signing key |
 | `vaultJwsKeyPathPrefix` | `VAULT_JWS_KEY_PATH_PREFIX` | `pivotal/jwskey` | Path prefix; the key is read from `<prefix>/<connectorId>` |
 | `vaultServiceAccountTokenPath` | `VAULT_SERVICE_ACCOUNT_TOKEN_PATH` | `/var/run/secrets/kubernetes.io/serviceaccount/token` | Where the kubelet projects the pod's ServiceAccount token |
+| `isMockEnabled` | `IS_MOCK_ENABLED` | `false` | Enables or disables mock responses. |
 
 ### FSPIOP JWS signing
 
