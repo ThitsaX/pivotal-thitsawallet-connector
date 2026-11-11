@@ -78,4 +78,5 @@ exec java \
     "-DkeyProvider=${KEY_PROVIDER}" \
     "-DhsmCredPath=${HSM_CRED_PATH}" \
     "-DkeyRefPathPrefix=${KEY_REF_PATH}" \
+    "-DisMockEnabled=${IS_MOCK_ENABLED}" \
     $LAUNCH

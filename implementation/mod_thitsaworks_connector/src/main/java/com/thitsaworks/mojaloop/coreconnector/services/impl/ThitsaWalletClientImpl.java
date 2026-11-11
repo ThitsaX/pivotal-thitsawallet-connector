@@ -33,6 +33,7 @@ import com.thitsaworks.mojaloop.coreconnector.error.ThitsaWalletErrorDecoder;
 import com.thitsaworks.mojaloop.coreconnector.error.ThitsaWalletErrorProcessor;
 import com.thitsaworks.mojaloop.coreconnector.error.ThitsaWalletErrorResponse;
 import com.thitsaworks.mojaloop.coreconnector.fspiop.model.AmountType;
+import com.thitsaworks.mojaloop.coreconnector.fspiop.model.Currency;
 import com.thitsaworks.mojaloop.coreconnector.fspiop.model.Extension;
 import com.thitsaworks.mojaloop.coreconnector.fspiop.model.ExtensionList;
 import com.thitsaworks.mojaloop.coreconnector.fspiop.model.TransactionInitiatorType;
@@ -61,6 +62,7 @@ import retrofit2.converter.scalars.ScalarsConverterFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -143,6 +145,32 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
         try {
 
+            if (this.settings.getIsMockEnabled().equals(true)){
+
+                response.setType(TransactionInitiatorType.CONSUMER.toString());
+                response.setIdType(request.getIdType());
+                response.setIdValue(request.getIdValue());
+                response.setIdSubValue("");
+                response.setDisplayName("Aye Chan Mock");
+                response.setFirstName("Aye");
+                response.setMiddleName("Chan");
+                response.setLastName("Mock");
+                response.setMerchantClassificationCode("");
+                response.setFspId("DFSP");
+                response.setDateOfBirth("");
+
+                String supportedCurrencies = "USD,LRD";
+                String[] currencyCodes = supportedCurrencies.split(",");
+                List<Currency> supportedCurrenciesList = new ArrayList<>();
+                for (String currencyCode : currencyCodes) {
+
+                    supportedCurrenciesList.add(Currency.fromValue(currencyCode));
+                }
+
+                response.setSupportedCurrencies(supportedCurrenciesList);
+
+            } else {
+
             if (this.settings.getIsPrefix().toLowerCase().equals("true")) {
 
                 idValue = this.utility.removePrefix(idValue);
@@ -185,6 +213,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
             }
 
+            }
         } catch (Exception e) {
 
             try {
@@ -233,7 +262,41 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
         try {
 
-            if (request == null || !StringUtils.hasLength(request.getQuotedId()) ||
+            if (this.settings.getIsMockEnabled().equals(true)) {
+
+                response.setQuoteId(request.getQuotedId());
+                response.setTransactionId(request.getTransactionId());
+                response.setTransferAmount(new BigDecimal(request.getAmount()).stripTrailingZeros()
+                                                                              .toPlainString()
+                                                                              .stripTrailing());
+                response.setTransferAmountCurrency(request.getCurrency());
+                response.setPayeeFspFeeAmount("0");
+                response.setPayeeFspFeeAmountCurrency(request.getFeesCurrency());
+                response.setPayeeReceiveAmount(new BigDecimal(request.getAmount()).stripTrailingZeros()
+                                                                                  .toPlainString()
+                                                                                  .stripTrailing());
+                response.setPayeeReceiveAmountCurrency(request.getCurrency());
+                response.setPayeeFspCommissionAmount("0");
+                response.setPayeeFspCommissionAmountCurrency(request.getFeesCurrency());
+                response.setExpiration(request.getExpiration());
+                response.setGeoCode(request.getGeoCode());
+                response.setExtensionList(request.getExtensionList());
+
+                String supportedCurrencies = "USD,LRD";
+
+                List<String> supportedCurrenciesList = new ArrayList<>();
+
+                for (String currencyCode : supportedCurrencies.split(",")) {
+                    supportedCurrenciesList.add(currencyCode.trim());
+                }
+
+                response.setSupportedCurrencies(supportedCurrenciesList);
+
+
+            } else {
+
+
+                if (request == null || !StringUtils.hasLength(request.getQuotedId()) ||
                     !StringUtils.hasLength(request.getTransactionId()) ||
                     request.getAmount() == null) {
 
@@ -358,7 +421,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
                     response = addFeeCalculationExtensions(response, catalystFeeResponse);
                 }
             }
-
+            }
         } catch (Exception e) {
 
             try {
@@ -415,6 +478,12 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
         try {
 
+            if (this.settings.getIsMockEnabled().equals(true)) {
+
+                response.setHomeTransactionId(request.getTransferId());
+
+            } else {
+
             if (request == null || request.getQuoteRequest() == null ||
                     request.getQuoteRequest().getBody() == null ||
                     request.getQuoteRequest().getBody().getPayee() == null ||
@@ -469,6 +538,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
             }
 
+            }
         } catch (Exception e) {
 
             try {
