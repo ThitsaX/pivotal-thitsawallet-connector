@@ -145,7 +145,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
         try {
 
-            if (this.settings.getIsMockEnabled().equals(true)){
+            if (this.settings.getIsMockEnabled()){
 
                 response.setType(TransactionInitiatorType.CONSUMER.toString());
                 response.setIdType(request.getIdType());
@@ -262,7 +262,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
         try {
 
-            if (this.settings.getIsMockEnabled().equals(true)) {
+            if (this.settings.getIsMockEnabled()) {
 
                 response.setQuoteId(request.getQuotedId());
                 response.setTransactionId(request.getTransactionId());
@@ -478,7 +478,7 @@ public class ThitsaWalletClientImpl implements FspClientService {
 
         try {
 
-            if (this.settings.getIsMockEnabled().equals(true)) {
+            if (this.settings.getIsMockEnabled()) {
 
                 response.setHomeTransactionId(request.getTransferId());
 
