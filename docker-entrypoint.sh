@@ -57,6 +57,7 @@ exec java \
     "-DsdkConnectorPortNo=${SDK_CONNECTOR_PORT_NO}" \
     "-DtransactionAmountLimit=${TRANSACTION_AMOUNT_LIMIT}" \
     "-DisCalculateFee=${IS_CALCULATE_FEE}" \
+    "-DhubCallbackFormat=${HUB_CALLBACK_FORMAT:-FSPIOP}" \
     "-DfspiopUseJws=${FSPIOP_USE_JWS:-false}" \
     "-DvaultUrl=${VAULT_URL:-}" \
     "-DvaultRole=${VAULT_ROLE:-}" \
